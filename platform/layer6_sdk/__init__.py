@@ -13,7 +13,7 @@ from platform.layer6_sdk.blueprints import (
     BlueprintConfig,
     blueprint_for_scenario,
 )
-from platform.layer6_sdk.client import IFXActionClient
+from platform.layer6_sdk.client import BankingAgenticAIClient
 from platform.layer6_sdk.outcome_router import OutcomeRouter
 
 __all__ = [
@@ -23,7 +23,7 @@ __all__ = [
     "BlueprintRunner",
     "CHURN_PREVENTION",
     "FRAUD_ALERT",
-    "IFXActionClient",
+    "BankingAgenticAIClient",
     "OutcomeRouter",
     "PAYMENT_RISK_INTERVENTION",
     "PipelineEventBus",

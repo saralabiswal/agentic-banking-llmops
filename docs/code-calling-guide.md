@@ -206,20 +206,20 @@ adapter. If no actions are approved, returns a `PENDING_APPROVAL` result.
 - `ChannelAdapter.send(action)`
 - `AuditWriter.write(ACTION_EXECUTED)`
 
-### `IFXActionClient`
+### `BankingAgenticAIClient`
 
 **File:** `platform/layer6_sdk/client.py`
 
 **Purpose:** Product-team SDK-style client for reading execution results and
 recording outcomes.
 
-#### `IFXActionClient.execute(trace_id, action_id, caller_id)`
+#### `BankingAgenticAIClient.execute(trace_id, action_id, caller_id)`
 
 **Purpose:** Returns an existing execution result from the runner status store.
 In this local implementation, execution itself is performed by
 `BlueprintRunner.run(...)`.
 
-#### `IFXActionClient.record_outcome(...)`
+#### `BankingAgenticAIClient.record_outcome(...)`
 
 **Purpose:** Converts SDK outcome input into an `OutcomeEvent` and routes it
 through `OutcomeRouter`.

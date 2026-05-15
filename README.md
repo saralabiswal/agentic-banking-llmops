@@ -88,7 +88,7 @@ state stores, and feedback loop.
 ```mermaid
 flowchart TB
     trigger["Inbound Trigger<br/>scheduler · customer event · API call"]
-    ui["React UI · SDK ActionClient · FastAPI + SSE"]
+    ui["React UI · BankingAgenticAIClient · FastAPI + SSE"]
 
     subgraph sources["Customer + Policy Inputs"]
         card["Card System<br/>balance · utilization · missed payments"]
@@ -177,7 +177,7 @@ Product Teams / Operators
         │
         ▼
 ┌─────────────────────────────────────────────────────────┐
-│  React UI  ·  SDK ActionClient  ·  FastAPI + SSE        │
+│  React UI  ·  BankingAgenticAIClient  ·  FastAPI + SSE  │
 └──────────────────────────┬──────────────────────────────┘
                            │  Blueprint Runner
                            ▼

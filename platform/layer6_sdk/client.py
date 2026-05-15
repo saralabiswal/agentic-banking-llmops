@@ -14,7 +14,7 @@ from platform.observability.tracing import traced
 from uuid import uuid4
 
 
-class IFXActionClient:
+class BankingAgenticAIClient:
     """Product-team client for executing actions and recording outcomes."""
 
     def __init__(

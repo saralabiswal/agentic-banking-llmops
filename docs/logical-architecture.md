@@ -13,7 +13,7 @@ flowchart TB
 
   actor["Product Teams / Operators"]
   ui["React UI\nPipeline, Architecture, Audit,\nGuardrails, Experiments, Models"]
-  sdk["Layer 6 SDK Surface\nBlueprints, ActionClient,\nChannel Adapters"]
+  sdk["Layer 6 SDK Surface\nBlueprints, BankingAgenticAIClient,\nChannel Adapters"]
   api["FastAPI Platform API\npipeline, audit, guardrails,\nmodels, experiments, config, SSE"]
   runner["Blueprint Runner\nTrace/session creation,\n6-layer orchestration,\nstatus tracking"]
   sse["SSE Event Bus\nlayer_started, layer_completed,\npipeline_done"]
@@ -141,4 +141,3 @@ flowchart TB
 | Layer 3/4 governance boundary | Agents propose actions; guardrails authorize actions. | Prevents prompt behavior from becoming the control plane. |
 | Layer 5/6 execution boundary | Experiments tag approved actions before delivery. | Keeps measurement and execution coupled but auditable. |
 | Audit/observability boundary | Audit proves decisions; metrics/traces operate the system. | Separates regulatory replay from engineering telemetry. |
-

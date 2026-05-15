@@ -133,7 +133,7 @@ export const sections: Record<ArchitectureSectionId, ArchitectureSection> = {
     architecture: ["BlueprintRunner executes approved platform blueprints", "Channel adapters send approved actions", "ExecutionResult returns delivery and tracking IDs", "OutcomeRouter feeds A/B, governance, approval feedback, and audit"],
     decisions: [
       { decision: "Blueprint catalog", choice: "platform-owned compositions", rationale: "Teams cannot assemble pipelines that bypass guardrails." },
-      { decision: "Typed SDK", choice: "ActionClient", rationale: "Product integration stays stable and simple." },
+      { decision: "Typed SDK", choice: "BankingAgenticAIClient", rationale: "Product integration stays stable and simple." },
       { decision: "Channel adapters", choice: "one adapter per channel", rationale: "Execution systems stay isolated." },
       { decision: "Separate outcome API", choice: "async customer events", rationale: "Delivery is not conversion." },
       { decision: "Trace threading", choice: "one trace_id", rationale: "Execution links back to every prior decision." }
