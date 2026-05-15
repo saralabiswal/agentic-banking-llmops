@@ -34,6 +34,7 @@ replay, A/B experimentation, drift monitoring, and a live architecture diagram.
 - [UI Pages](#ui-pages)
 - [LLM Configuration](#llm-configuration)
 - [Project Structure](#project-structure)
+- [Code Calling Guide](#code-calling-guide)
 - [Contributing](#contributing)
 
 ---
@@ -486,6 +487,13 @@ banking-agentic-platform/
 ├── pyproject.toml               # Python dependencies + tool config
 └── Makefile                     # All development commands
 ```
+
+---
+
+## Code Calling Guide
+
+See [`docs/code-calling-guide.md`](docs/code-calling-guide.md) for the main API,
+SDK, service, and layer method call graph with Javadoc-style summaries.
 
 ---
 
