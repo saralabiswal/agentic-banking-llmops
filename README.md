@@ -491,9 +491,9 @@ banking-agentic-platform/
 
 ## Contributing
 
-Read `AGENTS.md` and the relevant section of `docs/architecture.md` before
-modifying any layer. The architecture document is the ground truth for field names,
-schema definitions, and design decisions — code must trace back to it.
+Before modifying a layer, read [`docs/logical-architecture.md`](docs/logical-architecture.md)
+and the nearby implementation tests. Keep field names, schema definitions, and
+behavior aligned with the tracked code and documentation.
 
 **Standards:**
 - Type hints on every function signature
