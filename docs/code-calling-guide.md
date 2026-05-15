@@ -8,37 +8,324 @@ next layer.
 
 ## Top-Level Runtime Flow
 
-```mermaid
-sequenceDiagram
-    participant UI as React UI / SDK Client
-    participant API as FastAPI Routers
-    participant Runner as BlueprintRunner
-    participant L1 as ContextAssemblyService
-    participant L2 as VectorSearchService
-    participant L3 as Orchestrator
-    participant L4 as GuardrailsService
-    participant L5 as ExperimentService
-    participant L6 as Channel Adapter
-    participant Audit as AuditWriter
-    participant Events as PipelineEventBus
+![Numbered code calling sequence](assets/code-calling-sequence.svg)
 
-    UI->>API: 01 POST /pipeline/run
-    API->>Runner: 02 run(blueprint, customer_id, trigger, caller_id)
-    Runner->>Events: 03 publish layer_started L1
-    Runner->>L1: 04 assemble(customer_id, session_id, scenario)
-    L1->>Audit: 05 write CONTEXT_ASSEMBLY
-    Runner->>Events: 06 publish layer_completed L1
-    Runner->>L2: 07 retrieve(session_id, scenario)
-    L2->>Audit: 08 write VECTOR_RETRIEVAL
-    Runner->>L3: 09 run_pipeline(session_id, scenario, chunks, trace_id)
-    L3->>Audit: 10 write ORCHESTRATION_COMPLETE
-    Runner->>L4: 11 evaluate(orchestrator_output, session_id)
-    L4->>Audit: 12 write GUARDRAILS_EVALUATION
-    Runner->>L5: 13 select_variant(customer_id, scenario, action_type)
-    Runner->>L6: 14 send(approved_action)
-    L6->>Audit: 15 write ACTION_EXECUTED
-    Runner->>Events: 16 publish pipeline_done
+## Numbered Code Flow Walkthrough
+
+Use this section together with the numbered sequence diagram above. The goal is
+to follow one pipeline run from the UI/API boundary through all six layers, while
+knowing which file and method to open when you want to inspect the implementation.
+
+### 01. UI calls `POST /pipeline/run`
+
+**Code to read:** `platform/api/routers/pipeline.py`
+
+The flow starts when a caller asks the platform to run a banking scenario for a
+customer. In the UI, this is the Pipeline Runner page; for an API client, it is
+the `POST /pipeline/run` endpoint.
+
+The request body is represented by `PipelineRunRequest`:
+
+```python
+class PipelineRunRequest(BaseModel):
+    customer_id: str
+    scenario: str
+    blueprint: str | None = None
+    caller_id: str = "api"
+    trigger: str = "api"
 ```
+
+At this point, nothing has run yet. The API is just collecting the minimum
+inputs needed to identify the customer, scenario, caller, and trigger source.
+
+### 02. API starts `BlueprintRunner.run(...)`
+
+**Code to read:** `run_pipeline(...)` and `_run_background(...)` in
+`platform/api/routers/pipeline.py`, then `BlueprintRunner.run(...)` in
+`platform/layer6_sdk/blueprint_runner.py`
+
+The API creates a `session_id` and a `trace_id`, stores an initial
+`status_by_trace` record, and starts `_run_background(...)` as an async task.
+That background task calls:
+
+```python
+await runner.run(
+    blueprint=blueprint,
+    customer_id=request.customer_id,
+    trigger=request.trigger,
+    caller_id=request.caller_id,
+    session_id=session_id,
+    trace_id=trace_id,
+)
+```
+
+This is the main handoff from API routing into the six-layer platform runtime.
+From here on, `BlueprintRunner` is the conductor: it calls each layer in order,
+records status, and emits live progress events.
+
+### 03. Runner publishes `layer_started` for L1
+
+**Code to read:** `BlueprintRunner._run_layer(...)`
+
+Every layer call goes through `_run_layer(...)`. Before it calls the layer
+method, it publishes:
+
+```python
+await self.event_bus.publish(
+    trace_id,
+    "layer_started",
+    {"layer": layer, "timestamp": datetime.now(UTC).isoformat()},
+)
+```
+
+This event is what lets the UI show that Layer 1 has started. The same pattern
+is reused for every layer, so the UI does not need to understand each service
+internally. It only listens to the event bus.
+
+### 04. L1 assembles customer context
+
+**Code to read:** `ContextAssemblyService.assemble(...)` in
+`platform/layer1_context/service.py`
+
+Layer 1 builds the canonical `CustomerProfile`. It fetches card, banking, CRM,
+and behavioral data concurrently:
+
+```python
+fetch_results = await asyncio.gather(
+    *[
+        self._fetch_with_timeout(adapter, customer_id, trace_id)
+        for adapter in self._source_adapters
+    ]
+)
+```
+
+Each adapter has a hard timeout. If CRM or another source is slow or down, the
+profile is marked as partial instead of failing the whole run. That is why the
+pipeline can keep moving with `partial_context=True` and `sources_degraded`
+metadata.
+
+After source fetches complete, Layer 1 pulls feature-store signals, normalizes
+the raw data into `CustomerProfile`, and writes it to the context store under:
+
+```text
+session:{session_id}:customer_profile
+```
+
+This key is important. Layers 2, 3, and 4 use it to read the same session-scoped
+profile.
+
+### 05. L1 writes `CONTEXT_ASSEMBLY` audit evidence
+
+**Code to read:** the audit write block inside
+`ContextAssemblyService.assemble(...)`
+
+Layer 1 writes an `AuditRecord` with event type `CONTEXT_ASSEMBLY`. This record
+captures which sources succeeded, which degraded, adapter latencies, model
+versions, profile hash, and TTL expiry.
+
+Think of this as the first regulatory evidence checkpoint. Later, if someone
+asks why a decision happened, this record proves what customer context was
+available at decision time.
+
+### 06. Runner publishes `layer_completed` for L1
+
+**Code to read:** `BlueprintRunner._run_layer(...)`
+
+After `assemble(...)` returns, `_run_layer(...)` measures latency and publishes
+`layer_completed` with a compact output summary:
+
+```python
+await self.event_bus.publish(
+    trace_id,
+    "layer_completed",
+    {
+        "layer": layer,
+        "latency_ms": latency_ms,
+        "output_summary": _summary_for_output(output),
+    },
+)
+```
+
+The important design idea is separation: the UI gets enough data for progress
+display, while full evidence stays in audit records.
+
+### 07. L2 retrieves policy context
+
+**Code to read:** `VectorSearchService.retrieve(...)` in
+`platform/layer2_vector/service.py`
+
+Layer 2 starts by reading the Layer 1 profile from the context store:
+
+```python
+profile = await self._read_customer_profile(session_id)
+```
+
+Then it builds a scenario-aware query from that profile:
+
+```python
+query = build_retrieval_query(profile, scenario)
+```
+
+That query is used for hybrid search over the YAML knowledge base. The service
+combines dense embeddings, sparse BM25, metadata filters, and cross-encoder
+reranking. The result is a `RetrievalResult` containing the top policy chunks
+the agents should use.
+
+### 08. L2 writes `VECTOR_RETRIEVAL` audit evidence
+
+**Code to read:** `VectorSearchService._write_audit(...)`
+
+Layer 2 writes the retrieved chunks, document versions, scores, model names,
+knowledge-base version, and retrieval latency. This matters because agent output
+must be explainable against the exact policy evidence retrieved at the time.
+
+If an agent later proposes a hardship offer, the audit trail can show which
+hardship policy chunks were available to that agent.
+
+### 09. L3 runs the agent pipeline
+
+**Code to read:** `Orchestrator.run_pipeline(...)` in
+`platform/layer3_orchestration/orchestrator.py`
+
+Layer 3 loads the customer profile, selects the static pipeline for the
+scenario, then runs each agent step. Each agent gets an `AgentContext` that
+contains:
+
+- `session_id`
+- `customer_id`
+- `scenario`
+- `trace_id`
+- retrieved `policy_chunks`
+- prior agent outputs
+- authorized tools
+- step timeout
+
+The key design rule is that agents propose actions; they do not execute them.
+Tool authorization and output schema validation happen in code, outside the
+prompt.
+
+If an agent times out, returns invalid schema, or attempts an unauthorized tool,
+the orchestrator routes the run to human review instead of letting the bad
+output continue silently.
+
+### 10. L3 writes `ORCHESTRATION_COMPLETE` audit evidence
+
+**Code to read:** `Orchestrator._write_audit(...)`
+
+After the pipeline finishes, Layer 3 writes the complete `OrchestratorOutput`.
+That includes agent outputs, branch decisions, proposed actions, approval
+requirements, and orchestration latency.
+
+This is the handoff point between reasoning and governance. The proposed actions
+exist, but none have been sent to customers yet.
+
+### 11. L4 evaluates guardrails
+
+**Code to read:** `GuardrailsService.evaluate(...)` and
+`GuardrailsService._evaluate_action(...)` in
+`platform/layer4_guardrails/service.py`
+
+Layer 4 reads the same customer profile and evaluates each `ProposedAction`.
+Checks run in this order:
+
+1. Regulatory rules
+2. Business policy rules
+3. Responsible-AI checks
+
+Regulatory blocks short-circuit the rest of the checks for that action. Flagged
+actions go to the approval queue. Only approved actions can continue toward
+execution.
+
+This is the most important safety boundary in the codebase: LLM output is not a
+control plane. Guardrails authorize actions before anything customer-facing can
+happen.
+
+### 12. L4 writes `GUARDRAILS_EVALUATION` audit evidence
+
+**Code to read:** `GuardrailsService._write_audit(...)`
+
+Layer 4 writes which actions were evaluated, latency, rule versions, and every
+check result. This gives compliance reviewers the rule-by-rule reason an action
+was approved, flagged, or blocked.
+
+Because rule IDs and versions are recorded, the audit trail can still explain a
+decision even after YAML rules evolve later.
+
+### 13. L5 selects experiment variants
+
+**Code to read:** `BlueprintRunner._select_variants(...)` and
+`ExperimentService.select_variant(...)`
+
+The runner passes approved actions to Layer 5. For each action, the experiment
+service tries to find an active experiment matching:
+
+```text
+scenario + action_type
+```
+
+If a winner already exists, it uses the winner. If a statistically qualified
+leader exists, it uses the leader. Otherwise it uses stable hash assignment:
+
+```python
+assignment_bucket(customer_id, experiment.experiment_id)
+```
+
+The selected variant can rewrite the customer message while preserving the
+original action metadata. This is how experimentation changes the treatment
+without bypassing guardrails.
+
+### 14. L6 sends the approved action
+
+**Code to read:** `BlueprintRunner._execute_actions(...)` and
+`_adapter_for_action(...)`
+
+Layer 6 is the only layer that executes. It picks a channel adapter from the
+approved action:
+
+- SMS action -> `MockSMSAdapter`
+- CRM action or create-case action -> `MockCRMAdapter`
+- otherwise -> `MockPushAdapter`
+
+Then it calls:
+
+```python
+receipt = await adapter.send(action)
+```
+
+The local implementation uses mock adapters, but the interface shape is the
+same place where real push, SMS, email, or CRM integrations would plug in.
+
+### 15. L6 writes `ACTION_EXECUTED` audit evidence
+
+**Code to read:** the audit write block inside
+`BlueprintRunner._execute_actions(...)`
+
+After a channel adapter returns a delivery receipt, Layer 6 writes an
+`ACTION_EXECUTED` audit record. The payload includes the action ID, caller ID,
+delivery receipt, outcome tracking ID, experiment ID, and variant ID.
+
+This ties together execution, experimentation, and future outcome capture.
+
+If there are no approved actions, Layer 6 writes a no-action audit record and
+returns an `ExecutionResult` with `status="PENDING_APPROVAL"`.
+
+### 16. Runner publishes `pipeline_done`
+
+**Code to read:** the end of `BlueprintRunner.run(...)`
+
+Finally, the runner updates `status_by_trace`, publishes `pipeline_done`, and
+returns the final `ExecutionResult`.
+
+At this point:
+
+- API callers can read status through `GET /pipeline/status/{trace_id}`
+- UI clients see the SSE stream complete
+- audit records contain the decision trail
+- approval queue contains any flagged actions
+- outcome capture can later call `POST /outcomes/{trace_id}`
+
+This is why `trace_id` is threaded everywhere: it is the one handle that connects
+runtime status, SSE events, audit records, action execution, and outcomes.
 
 ## API Entrypoints
 

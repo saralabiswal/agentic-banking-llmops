@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="980" viewBox="0 0 1280 980" role="img" aria-labelledby="title desc">
+  <title id="title">Banking Agentic AI Platform code calling sequence</title>
+  <desc id="desc">A numbered compact flow diagram showing the runtime call sequence from API request through six platform layers, audit writes, and completion events.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { fill: #0f172a; font: 700 30px Arial, sans-serif; }
+      .subtitle { fill: #475569; font: 15px Arial, sans-serif; }
+      .group-title { fill: #334155; font: 700 14px Arial, sans-serif; letter-spacing: .08em; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; rx: 12; }
+      .api { stroke: #2563eb; }
+      .event { stroke: #7c3aed; }
+      .layer1 { stroke: #3b82f6; }
+      .layer2 { stroke: #9333ea; }
+      .layer3 { stroke: #059669; }
+      .layer4 { stroke: #dc2626; }
+      .layer5 { stroke: #d97706; }
+      .layer6 { stroke: #0891b2; }
+      .audit { stroke: #64748b; }
+      .num { fill: #ffffff; font: 700 13px Arial, sans-serif; }
+      .num-bg { fill: #0f172a; }
+      .label { fill: #0f172a; font: 700 15px Arial, sans-serif; }
+      .file { fill: #475569; font: 12px "SFMono-Regular", Consolas, monospace; }
+      .note { fill: #475569; font: 12px Arial, sans-serif; }
+      .arrow { stroke: #94a3b8; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .audit-arrow { stroke: #64748b; stroke-width: 2; fill: none; stroke-dasharray: 5 5; marker-end: url(#arrowhead-audit); }
+      .legend { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1; rx: 10; }
+      .legend-text { fill: #334155; font: 13px Arial, sans-serif; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrowhead-audit" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1280" height="980"/>
+  <text class="title" x="48" y="58">Code Calling Sequence</text>
+  <text class="subtitle" x="48" y="84">Numbered runtime path through API, BlueprintRunner, six platform layers, audit evidence, and SSE events.</text>
+
+  <rect class="legend" x="930" y="35" width="300" height="66"/>
+  <text class="legend-text" x="950" y="62">Solid arrows: runtime calls</text>
+  <line class="arrow" x1="950" y1="79" x2="1035" y2="79"/>
+  <text class="legend-text" x="1060" y="83">next service call</text>
+  <line class="audit-arrow" x1="950" y1="95" x2="1035" y2="95"/>
+  <text class="legend-text" x="1060" y="99">audit/event write</text>
+
+  <text class="group-title" x="90" y="140">REQUEST + ORCHESTRATION</text>
+  <text class="group-title" x="735" y="140">AUDIT + EVENT SIDE EFFECTS</text>
+
+  <!-- Left column runtime calls -->
+  <g id="step-01">
+    <rect class="card api" x="70" y="160" width="500" height="66"/>
+    <circle class="num-bg" cx="103" cy="193" r="18"/><text class="num" x="94" y="198">01</text>
+    <text class="label" x="132" y="187">UI or API client calls POST /pipeline/run</text>
+    <text class="file" x="132" y="207">platform/api/routers/pipeline.py</text>
+  </g>
+  <g id="step-02">
+    <rect class="card api" x="70" y="252" width="500" height="66"/>
+    <circle class="num-bg" cx="103" cy="285" r="18"/><text class="num" x="94" y="290">02</text>
+    <text class="label" x="132" y="279">API starts BlueprintRunner.run(...)</text>
+    <text class="file" x="132" y="299">platform/layer6_sdk/blueprint_runner.py</text>
+  </g>
+  <g id="step-04">
+    <rect class="card layer1" x="70" y="344" width="500" height="66"/>
+    <circle class="num-bg" cx="103" cy="377" r="18"/><text class="num" x="94" y="382">04</text>
+    <text class="label" x="132" y="371">L1 assembles CustomerProfile</text>
+    <text class="file" x="132" y="391">ContextAssemblyService.assemble(...)</text>
+  </g>
+  <g id="step-07">
+    <rect class="card layer2" x="70" y="436" width="500" height="66"/>
+    <circle class="num-bg" cx="103" cy="469" r="18"/><text class="num" x="94" y="474">07</text>
+    <text class="label" x="132" y="463">L2 retrieves policy chunks</text>
+    <text class="file" x="132" y="483">VectorSearchService.retrieve(...)</text>
+  </g>
+  <g id="step-09">
+    <rect class="card layer3" x="70" y="528" width="500" height="66"/>
+    <circle class="num-bg" cx="103" cy="561" r="18"/><text class="num" x="94" y="566">09</text>
+    <text class="label" x="132" y="555">L3 runs hub-and-spoke agents</text>
+    <text class="file" x="132" y="575">Orchestrator.run_pipeline(...)</text>
+  </g>
+  <g id="step-11">
+    <rect class="card layer4" x="70" y="620" width="500" height="66"/>
+    <circle class="num-bg" cx="103" cy="653" r="18"/><text class="num" x="94" y="658">11</text>
+    <text class="label" x="132" y="647">L4 evaluates guardrails</text>
+    <text class="file" x="132" y="667">GuardrailsService.evaluate(...)</text>
+  </g>
+  <g id="step-13">
+    <rect class="card layer5" x="70" y="712" width="500" height="66"/>
+    <circle class="num-bg" cx="103" cy="745" r="18"/><text class="num" x="94" y="750">13</text>
+    <text class="label" x="132" y="739">L5 selects experiment variant</text>
+    <text class="file" x="132" y="759">ExperimentService.select_variant(...)</text>
+  </g>
+  <g id="step-14">
+    <rect class="card layer6" x="70" y="804" width="500" height="66"/>
+    <circle class="num-bg" cx="103" cy="837" r="18"/><text class="num" x="94" y="842">14</text>
+    <text class="label" x="132" y="831">L6 sends approved action</text>
+    <text class="file" x="132" y="851">ChannelAdapter.send(action)</text>
+  </g>
+
+  <!-- Runtime arrows -->
+  <path class="arrow" d="M320 226 L320 252"/>
+  <path class="arrow" d="M320 318 L320 344"/>
+  <path class="arrow" d="M320 410 L320 436"/>
+  <path class="arrow" d="M320 502 L320 528"/>
+  <path class="arrow" d="M320 594 L320 620"/>
+  <path class="arrow" d="M320 686 L320 712"/>
+  <path class="arrow" d="M320 778 L320 804"/>
+
+  <!-- Right column events and audit writes -->
+  <g id="step-03">
+    <rect class="card event" x="710" y="252" width="500" height="58"/>
+    <circle class="num-bg" cx="743" cy="281" r="18"/><text class="num" x="734" y="286">03</text>
+    <text class="label" x="772" y="276">Publish layer_started L1</text>
+    <text class="file" x="772" y="296">PipelineEventBus.publish(...)</text>
+  </g>
+  <g id="step-05">
+    <rect class="card audit" x="710" y="344" width="500" height="58"/>
+    <circle class="num-bg" cx="743" cy="373" r="18"/><text class="num" x="734" y="378">05</text>
+    <text class="label" x="772" y="368">Write CONTEXT_ASSEMBLY</text>
+    <text class="file" x="772" y="388">AuditWriter.write(AuditRecord)</text>
+  </g>
+  <g id="step-06">
+    <rect class="card event" x="710" y="414" width="500" height="58"/>
+    <circle class="num-bg" cx="743" cy="443" r="18"/><text class="num" x="734" y="448">06</text>
+    <text class="label" x="772" y="438">Publish layer_completed L1</text>
+    <text class="file" x="772" y="458">BlueprintRunner._run_layer(...)</text>
+  </g>
+  <g id="step-08">
+    <rect class="card audit" x="710" y="484" width="500" height="58"/>
+    <circle class="num-bg" cx="743" cy="513" r="18"/><text class="num" x="734" y="518">08</text>
+    <text class="label" x="772" y="508">Write VECTOR_RETRIEVAL</text>
+    <text class="file" x="772" y="528">VectorSearchService._write_audit(...)</text>
+  </g>
+  <g id="step-10">
+    <rect class="card audit" x="710" y="554" width="500" height="58"/>
+    <circle class="num-bg" cx="743" cy="583" r="18"/><text class="num" x="734" y="588">10</text>
+    <text class="label" x="772" y="578">Write ORCHESTRATION_COMPLETE</text>
+    <text class="file" x="772" y="598">Orchestrator._write_audit(...)</text>
+  </g>
+  <g id="step-12">
+    <rect class="card audit" x="710" y="624" width="500" height="58"/>
+    <circle class="num-bg" cx="743" cy="653" r="18"/><text class="num" x="734" y="658">12</text>
+    <text class="label" x="772" y="648">Write GUARDRAILS_EVALUATION</text>
+    <text class="file" x="772" y="668">GuardrailsService._write_audit(...)</text>
+  </g>
+  <g id="step-15">
+    <rect class="card audit" x="710" y="804" width="500" height="58"/>
+    <circle class="num-bg" cx="743" cy="833" r="18"/><text class="num" x="734" y="838">15</text>
+    <text class="label" x="772" y="828">Write ACTION_EXECUTED</text>
+    <text class="file" x="772" y="848">BlueprintRunner._execute_actions(...)</text>
+  </g>
+  <g id="step-16">
+    <rect class="card event" x="710" y="886" width="500" height="58"/>
+    <circle class="num-bg" cx="743" cy="915" r="18"/><text class="num" x="734" y="920">16</text>
+    <text class="label" x="772" y="910">Publish pipeline_done</text>
+    <text class="file" x="772" y="930">PipelineEventBus.publish(...)</text>
+  </g>
+
+  <!-- Side-effect arrows from runtime to event/audit side -->
+  <path class="audit-arrow" d="M570 285 C625 285 650 281 710 281"/>
+  <path class="audit-arrow" d="M570 377 C625 377 650 373 710 373"/>
+  <path class="audit-arrow" d="M570 469 C630 469 648 443 710 443"/>
+  <path class="audit-arrow" d="M570 469 C630 469 648 513 710 513"/>
+  <path class="audit-arrow" d="M570 561 C630 561 648 583 710 583"/>
+  <path class="audit-arrow" d="M570 653 C630 653 648 653 710 653"/>
+  <path class="audit-arrow" d="M570 837 C630 837 648 833 710 833"/>
+  <path class="audit-arrow" d="M320 870 C320 935 610 915 710 915"/>
+
+  <text class="note" x="70" y="930">Read the matching numbered walkthrough below the image for what each method does, what it returns, and why the step exists.</text>
+</svg>
