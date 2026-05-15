@@ -33,6 +33,9 @@ coverage/
 test-results/
 playwright-report/
 
+# Local planning notes
+docs/planning/
+
 # Local service data and logs
 mlruns/
 *.log

@@ -84,12 +84,90 @@ state stores, and feedback loop.
 
 ### Logical Architecture Diagram
 
-The full styled HTML architecture diagram is versioned at
-[`docs/logical-architecture.html`](docs/logical-architecture.html). Some markdown
-hosts disable embedded iframes in README files; use the link if the preview is not
-rendered.
+```mermaid
+flowchart TB
+    trigger["Inbound Trigger<br/>scheduler · customer event · API call"]
+    ui["React UI · SDK ActionClient · FastAPI + SSE"]
 
-<iframe src="docs/logical-architecture.html" title="Banking Agentic AI Platform logical architecture" width="100%" height="900" style="border:0; border-radius:12px; background:#050810;"></iframe>
+    subgraph sources["Customer + Policy Inputs"]
+        card["Card System<br/>balance · utilization · missed payments"]
+        banking["Core Banking<br/>checking · savings · NSF events"]
+        crm["CRM Adapter<br/>NPS · tenure · graceful degradation"]
+        behavior["Behavioral Events<br/>app activity · interactions"]
+        feature["Feature Store<br/>risk · churn · CLV · propensity"]
+        kb["Knowledge Base<br/>YAML policies · regulations · playbooks"]
+        rules["Rule Store<br/>versioned YAML guardrails"]
+    end
+
+    subgraph pipeline["Six-Layer Decision Pipeline"]
+        l1["L1 Context Assembly<br/>parallel source fetch · CustomerProfile · Valkey TTL"]
+        l2["L2 Vector Search<br/>hybrid dense + BM25 · RRF · cross-encoder rerank"]
+        l3["L3 Multi-Agent Orchestration<br/>hub-and-spoke agents · propose-only actions"]
+        l4["L4 Guardrails + Policy<br/>regulatory → business → responsible AI checks"]
+        l5["L5 A/B + Model Governance<br/>deterministic variants · drift · champion/challenger"]
+        l6["L6 SDK + Execution<br/>push · SMS · CRM · delivery receipts"]
+    end
+
+    subgraph state["Runtime State + Feedback"]
+        valkey["Valkey / Redis<br/>TTL profile · pipeline checkpoints"]
+        audit["Audit Records<br/>trace_id replay · append-only"]
+        queue["Approval Queue<br/>SLA countdown · reviewer decisions"]
+        exp["Experiment Store<br/>variants · samples · conversions"]
+        mlflow["MLflow Registry<br/>champion · challenger · evaluation gates"]
+        outcome["Outcome Events<br/>opened · enrolled · ignored · complaint"]
+    end
+
+    subgraph observe["Cross-Cutting Concerns"]
+        metrics["Prometheus + Grafana<br/>per-layer SLOs"]
+        traces["OpenTelemetry + Jaeger<br/>trace waterfall"]
+        compliance["Regulatory Audit Trail<br/>full decision reconstruction"]
+    end
+
+    ui --> trigger --> l1 --> l2 --> l3 --> l4 --> l5 --> l6 --> outcome
+
+    card --> l1
+    banking --> l1
+    crm --> l1
+    behavior --> l1
+    feature --> l1
+    kb --> l2
+    rules --> l4
+
+    l1 --> valkey
+    l3 --> valkey
+    l4 --> queue
+    l5 --> exp
+    l5 --> mlflow
+    l6 --> audit
+    outcome --> l5
+    queue --> l5
+
+    l1 -. trace_id .-> audit
+    l2 -. trace_id .-> audit
+    l3 -. trace_id .-> audit
+    l4 -. trace_id .-> audit
+    l5 -. trace_id .-> audit
+
+    pipeline -. metrics .-> metrics
+    pipeline -. spans .-> traces
+    audit -. replay .-> compliance
+
+    classDef layer1 fill:#dbeafe,stroke:#3b82f6,color:#0f172a
+    classDef layer2 fill:#f3e8ff,stroke:#a855f7,color:#0f172a
+    classDef layer3 fill:#d1fae5,stroke:#10b981,color:#0f172a
+    classDef layer4 fill:#fee2e2,stroke:#ef4444,color:#0f172a
+    classDef layer5 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+    classDef layer6 fill:#cffafe,stroke:#06b6d4,color:#0f172a
+    classDef stateful fill:#f8fafc,stroke:#64748b,color:#0f172a
+
+    class l1 layer1
+    class l2 layer2
+    class l3 layer3
+    class l4 layer4
+    class l5 layer5
+    class l6 layer6
+    class valkey,audit,queue,exp,mlflow,outcome stateful
+```
 
 ### Platform Overview
 
