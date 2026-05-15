@@ -1,0 +1,26 @@
+document_id: KB-PAY-007
+title: "Payment Risk Intervention Playbook"
+document_type: PLAYBOOK
+product_line: credit_card
+jurisdiction: US
+version: "1.8"
+effective_date: "2026-02-15"
+content:
+  summary: "Playbook for selecting payment-risk interventions based on risk score, payment propensity, utilization, recent interventions, and customer contact preferences."
+  sections:
+    - title: "High Risk Sequence"
+      content: "High and critical payment-risk customers receive progressively supportive interventions."
+      paragraphs:
+        - "For risk score above 0.65, the recommended sequence is SMS reminder, hardship eligibility call, then rate reduction offer when payment propensity is below 35%."
+        - "Payment propensity below 35% with utilization above 70% signals a structural constraint; a hardship call or rate reduction is more effective than a reminder alone."
+        - "If the customer has no direct deposit and a low checking balance, prioritize assistance language and avoid punitive or urgent wording."
+    - title: "Moderate Risk Sequence"
+      content: "Moderate-risk customers should receive lower-friction reminders before assisted interventions."
+      paragraphs:
+        - "For risk score between 0.35 and 0.65, send a push reminder when push is enabled and no recent intervention occurred in the last 7 days."
+        - "Escalate to SMS only when the customer opted into SMS and did not respond to a push reminder within 48 hours."
+    - title: "Low Risk Sequence"
+      content: "Low-risk customers should not receive aggressive collection-style messages."
+      paragraphs:
+        - "For risk score below 0.35 with no missed payments, suppress hardship and collections messaging unless the customer explicitly requests assistance."
+        - "Use educational autopay or statement reminders for low-risk accounts with positive balances and strong payment propensity."

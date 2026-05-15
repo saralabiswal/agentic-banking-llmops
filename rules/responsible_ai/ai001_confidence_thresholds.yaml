@@ -1,0 +1,20 @@
+rule_id: AI-001
+name: "Action Confidence Thresholds"
+category: RESPONSIBLE_AI
+version: "1.4"
+effective_date: "2026-01-01"
+expires_date: null
+condition:
+  action_type: "*"
+  field: confidence
+  operator: THRESHOLD_MAP
+  value:
+    SEND_PUSH_NOTIFICATION: 0.70
+    SEND_SMS: 0.70
+    CREATE_HARDSHIP_ENROLLMENT_CASE: 0.75
+    APPLY_RATE_REDUCTION: 0.80
+    ENROLL_PAYMENT_PLAN: 0.80
+    ESCALATE_TO_COLLECTIONS: 0.85
+outcome: FLAG
+severity: MEDIUM
+flag_message: "AI-001: confidence below threshold"

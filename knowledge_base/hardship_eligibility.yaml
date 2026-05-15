@@ -1,0 +1,26 @@
+document_id: KB-HARD-001
+title: "Hardship Program Eligibility Criteria"
+document_type: POLICY
+product_line: credit_card
+jurisdiction: US
+version: "2.3"
+effective_date: "2026-01-01"
+content:
+  summary: "Policy covering eligibility criteria, program terms, enrollment process, and escalation thresholds for the 90-day hardship deferral program for credit card customers experiencing payment difficulty."
+  sections:
+    - title: "Eligibility Requirements"
+      content: "Customers must show objective signs of short-term financial hardship before a deferral offer is proposed."
+      paragraphs:
+        - "Customers with 2+ missed payments in a rolling 90-day window and a checking balance below $500 are eligible for the 90-day hardship deferral program when no fraud or active bankruptcy hold is present."
+        - "Customers without direct deposit and with credit card utilization above 70% should be evaluated for structural cash-flow hardship rather than a reminder-only intervention."
+        - "Affluent or Prime customers with low risk and no missed payments should not be routed into hardship unless they self-attest to a qualifying event."
+    - title: "Program Terms"
+      content: "The hardship deferral program pauses minimum payment collection while preserving customer communication obligations."
+      paragraphs:
+        - "The 90-day hardship deferral covers minimum payment obligations only; interest accrual and credit bureau treatment follow the current regulatory reporting policy."
+        - "Enrollment requires a customer-facing disclosure that the program is temporary, that normal payments resume after the deferral period, and that the customer may cancel at any time."
+    - title: "Escalation Thresholds"
+      content: "Supervisory review is required when the hardship recommendation interacts with high exposure or prior interventions."
+      paragraphs:
+        - "Supervisor approval is required when exposure exceeds $10,000, when the account has more than 3 missed payments, or when a prior hardship deferral was granted within the last 180 days."
+        - "If source context is partial, agents may propose hardship review but must not state final eligibility without guardrail review."

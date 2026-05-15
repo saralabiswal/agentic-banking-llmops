@@ -1,0 +1,46 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node / UI
+node_modules/
+ui/node_modules/
+ui/dist/
+ui/coverage/
+ui/test-results/
+*.tsbuildinfo
+
+# Test and tooling output
+coverage/
+test-results/
+playwright-report/
+
+# Local service data and logs
+mlruns/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/

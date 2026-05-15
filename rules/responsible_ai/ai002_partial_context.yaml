@@ -1,0 +1,14 @@
+rule_id: AI-002
+name: "Partial Context Account Action Review"
+category: RESPONSIBLE_AI
+version: "1.4"
+effective_date: "2026-01-01"
+expires_date: null
+condition:
+  action_type: CREATE_HARDSHIP_ENROLLMENT_CASE
+  field: partial_context
+  operator: EQUALS
+  value: true
+outcome: FLAG
+severity: MEDIUM
+flag_message: "AI-002: CRM unavailable on account action"

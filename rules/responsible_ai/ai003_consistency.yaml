@@ -1,0 +1,14 @@
+rule_id: AI-003
+name: "Risk Signal Consistency"
+category: RESPONSIBLE_AI
+version: "1.1"
+effective_date: "2026-01-01"
+expires_date: null
+condition:
+  action_type: "*"
+  field: risk_supporting_signal_count
+  operator: LESS_THAN
+  value: 2
+outcome: FLAG
+severity: MEDIUM
+flag_message: "AI-003: risk assessment lacks supporting signals"

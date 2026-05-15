@@ -1,0 +1,14 @@
+rule_id: B-003
+name: "Duplicate Hardship Case"
+category: BUSINESS_POLICY
+version: "1.2"
+effective_date: "2026-01-01"
+expires_date: null
+condition:
+  action_type: CREATE_HARDSHIP_ENROLLMENT_CASE
+  field: metadata.open_hardship_case
+  operator: EQUALS
+  value: true
+outcome: BLOCK
+severity: HIGH
+flag_message: "B-003: duplicate open hardship case"

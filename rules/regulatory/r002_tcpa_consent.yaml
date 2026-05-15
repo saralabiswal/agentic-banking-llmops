@@ -1,0 +1,14 @@
+rule_id: R-002
+name: "TCPA SMS Consent"
+category: REGULATORY
+version: "2.0"
+effective_date: "2026-01-01"
+expires_date: null
+condition:
+  action_type: SEND_SMS
+  field: metadata.sms_ok
+  operator: EQUALS
+  value: false
+outcome: BLOCK
+severity: CRITICAL
+flag_message: "R-002: SMS consent missing"

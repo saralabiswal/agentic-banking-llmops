@@ -1,0 +1,25 @@
+document_id: KB-CL-004
+title: "Credit Limit Adjustment Policy"
+document_type: POLICY
+product_line: credit_card
+jurisdiction: US
+version: "2.0"
+effective_date: "2026-04-01"
+content:
+  summary: "Policy governing credit limit increases, decreases, and suppressions based on utilization, delinquency, customer segment, and responsible lending controls."
+  sections:
+    - title: "Increase Eligibility"
+      content: "Credit limit increases require strong repayment behavior and low current delinquency indicators."
+      paragraphs:
+        - "Customers are eligible for a credit limit increase review when utilization is below 60%, no payments were missed in the last 90 days, and payment propensity is above 70%."
+        - "Prime and Affluent customers may receive proactive review when CLV is high and no adverse action rules are triggered."
+    - title: "Decrease and Suppression Criteria"
+      content: "Limit decreases and suppressions require careful business and regulatory review."
+      paragraphs:
+        - "Do not propose a credit limit increase when risk score exceeds 0.65, utilization exceeds 70%, or the customer has 2+ missed payments in the last 90 days."
+        - "Adverse action notices are required for certain credit line decreases and must be reviewed by the regulatory guardrail category."
+    - title: "Churn Prevention Interaction"
+      content: "Retention offers must not bypass responsible lending criteria."
+      paragraphs:
+        - "A retention offer may include fee review or rewards education, but it must not include a credit limit increase when payment-risk suppressions are active."
+        - "When churn probability is high and payment risk is low, route to retention offer evaluation rather than hardship intervention."

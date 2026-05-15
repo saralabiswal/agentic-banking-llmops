@@ -1,0 +1,14 @@
+rule_id: R-003
+name: "FCRA Adverse Action Notice"
+category: REGULATORY
+version: "1.4"
+effective_date: "2026-01-01"
+expires_date: null
+condition:
+  action_type: CREDIT_LIMIT_DECREASE
+  field: metadata.adverse_action_notice
+  operator: EQUALS
+  value: false
+outcome: BLOCK
+severity: CRITICAL
+flag_message: "R-003: adverse action notice missing"

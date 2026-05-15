@@ -1,0 +1,17 @@
+rule_id: R-001
+name: "UDAAP Communication Safety"
+category: REGULATORY
+version: "2.0"
+effective_date: "2026-01-01"
+expires_date: null
+condition:
+  action_type: "*"
+  field: customer_message
+  operator: CONTAINS_ANY
+  value:
+    - "legal action"
+    - "account closure"
+    - "guaranteed approval"
+outcome: BLOCK
+severity: CRITICAL
+flag_message: "R-001: UDAAP prohibited language"

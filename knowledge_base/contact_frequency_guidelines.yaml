@@ -1,0 +1,26 @@
+document_id: KB-COMP-003
+title: "Contact Frequency Guidelines"
+document_type: COMPLIANCE
+product_line: credit_card
+jurisdiction: US
+version: "3.1"
+effective_date: "2026-03-01"
+content:
+  summary: "Compliance guidelines that limit outbound customer contacts across SMS, push, email, phone, and CRM channels during collections and servicing workflows."
+  sections:
+    - title: "Outbound Contact Limits"
+      content: "All automated and associate-initiated outbound contacts count toward the contact frequency cap."
+      paragraphs:
+        - "Maximum 3 outbound contacts per customer per rolling 7-day window. SMS, push, email, phone, and CRM tasks each count as 1 contact."
+        - "Do not send an SMS if the customer has opted out of SMS or if consent evidence is missing from the customer profile."
+        - "A customer-initiated inbound conversation does not count as an outbound contact, but a follow-up message sent by the bank does count."
+    - title: "Tone and Content"
+      content: "Payment-risk communication must remain supportive and avoid unfair, deceptive, or abusive language."
+      paragraphs:
+        - "Messages must not threaten account closure, legal action, credit reporting, or loss of access unless that consequence is approved by a regulatory rule and present in the final action."
+        - "Hardship-related messages must include an assistance framing and a clear path to opt out or request human support."
+    - title: "Suppression Rules"
+      content: "Suppression rules prevent duplicate and excessive contacts."
+      paragraphs:
+        - "Suppress automated payment-risk outreach when a human agent already contacted the customer about the same account within the prior 24 hours."
+        - "Suppress all outbound collections-like messaging while an active billing dispute is open for the same transaction."

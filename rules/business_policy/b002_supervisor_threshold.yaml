@@ -1,0 +1,14 @@
+rule_id: B-002
+name: "Standard Approval Threshold"
+category: BUSINESS_POLICY
+version: "3.1"
+effective_date: "2026-01-01"
+expires_date: null
+condition:
+  action_type: CREATE_HARDSHIP_ENROLLMENT_CASE
+  field: requires_approval
+  operator: EQUALS
+  value: true
+outcome: FLAG
+severity: MEDIUM
+flag_message: "B-002: standard approval"

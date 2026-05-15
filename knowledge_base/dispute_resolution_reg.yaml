@@ -1,0 +1,26 @@
+document_id: KB-REG-E-1005
+title: "Electronic Fund Transfer Dispute Resolution Requirements"
+document_type: REGULATION
+product_line: credit_card
+jurisdiction: US
+version: "4.0"
+effective_date: "2026-01-15"
+content:
+  summary: "Regulatory guidance for billing and electronic fund transfer disputes, including investigation timing, provisional credit, and customer notices under Regulation E."
+  sections:
+    - title: "Regulation E Investigation Timing"
+      content: "Dispute investigations must follow the timing and notice requirements in Regulation E."
+      paragraphs:
+        - "Under Regulation E section 1005.11, the institution must investigate an alleged electronic fund transfer error and determine whether an error occurred within the required investigation period."
+        - "When the investigation cannot be completed within the standard period, provisional credit must be considered and customer notice must explain the timing and next steps."
+        - "A billing dispute must not be treated as payment avoidance while the covered transaction remains under active investigation."
+    - title: "Customer Notice Requirements"
+      content: "Customer notices must be precise, timely, and auditable."
+      paragraphs:
+        - "The dispute acknowledgement notice must identify the disputed transaction, the investigation start date, and the customer's right to submit supporting documentation."
+        - "The resolution notice must state whether an error occurred, describe any correction made, and provide the evidence relied upon when no error is found."
+    - title: "Servicing Coordination"
+      content: "Servicing interventions must coordinate with active disputes."
+      paragraphs:
+        - "Collections or payment-risk interventions should be suppressed for amounts directly tied to an active dispute until the investigation reaches a final determination."
+        - "If a payment-risk scenario intersects with a dispute, the agent may propose a servicing case but must not propose payment pressure messaging."

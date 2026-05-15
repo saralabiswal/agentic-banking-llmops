@@ -1,0 +1,147 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(platform_layer_latency_seconds_bucket[5m])) by (le, layer))",
+          "legendFormat": "{{layer}}"
+        }
+      ],
+      "title": "p99 Latency per Layer",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "sum(rate(platform_layer_latency_seconds_count{status=\"error\"}[5m])) by (layer) / sum(rate(platform_layer_latency_seconds_count[5m])) by (layer)",
+          "legendFormat": "{{layer}}"
+        }
+      ],
+      "title": "Error Rate per Layer",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "sum(rate(platform_adapter_latency_seconds_count{status=\"success\"}[5m])) by (adapter) / sum(rate(platform_adapter_latency_seconds_count[5m])) by (adapter)",
+          "legendFormat": "{{adapter}}"
+        }
+      ],
+      "title": "Adapter Success Rates",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "sum(increase(platform_guardrail_checks_total[1h])) by (category, status)",
+          "legendFormat": "{{category}} {{status}}"
+        }
+      ],
+      "title": "Guardrail Check Outcomes",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "sum(increase(platform_experiment_assignments_total[1h])) by (experiment_id, variant_id)",
+          "legendFormat": "{{experiment_id}} {{variant_id}}"
+        }
+      ],
+      "title": "Experiment Assignment Distribution",
+      "type": "piechart"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "banking-agentic-platform"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Banking Agentic Platform",
+  "uid": "banking-agentic-platform",
+  "version": 1,
+  "weekStart": ""
+}
