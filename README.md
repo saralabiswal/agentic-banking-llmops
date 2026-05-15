@@ -1,177 +1,431 @@
 # Banking Agentic AI Platform
 
-Author: Sarala Biswal
+**Author:** Sarala Biswal &nbsp;·&nbsp; [LinkedIn](https://linkedin.com/in/saralabiswal) &nbsp;·&nbsp; [GitHub](https://github.com/saralabiswal)
 
-A cloud-agnostic, production-grade Agentic AI platform for banking decisions.
-It demonstrates how to compose live customer context, hybrid retrieval,
-multi-agent reasoning, guardrails, experimentation, execution, observability,
-and audit replay into one governed platform.
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-3b82f6?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-10b981?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React 18](https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white)](https://react.dev)
+[![License: MIT](https://img.shields.io/badge/license-MIT-f59e0b?style=flat-square)](LICENSE)
+[![No API Key Required](https://img.shields.io/badge/runs%20locally-no%20API%20key-a855f7?style=flat-square)](#quick-start)
 
-What makes this project different:
+---
 
-- Architecture-as-code: every layer has typed schemas, runtime services, tests,
-  and UI visibility.
-- Live diagram: `/architecture` animates the six-layer pipeline from SSE events.
-- No API key required: the default mock LLM exercises all downstream logic.
-- Regulatory replay: one `trace_id` reconstructs context, policy, guardrails,
-  action, and outcomes.
+A **cloud-agnostic, production-grade Agentic AI platform** for banking decisions.
+Six governed layers — from live customer context to executed action — with regulatory
+replay, A/B experimentation, drift monitoring, and a live architecture diagram.
 
-## Architecture Diagram
+> Built as a reference implementation of the engineering patterns that make agentic AI
+> trustworthy at enterprise scale: typed contracts between layers, runtime governance
+> before execution, deterministic experimentation, and an immutable audit trail that
+> reconstructs every decision from one `trace_id`.
 
-See [Logical Architecture Diagram](docs/logical-architecture.md) for the
-platform runtime view, service boundaries, governance flow, state stores, and
-feedback loop.
+---
 
-## Why This Architecture
+## Table of Contents
 
-Banks hold enough customer data to intervene before a customer misses a
-payment, churns, or disputes a charge. Most AI systems fail to act on it
-because they combine three problems: stale batch context, ungoverned agent
-actions, and no feedback loop.
+- [What Makes This Different](#what-makes-this-different)
+- [The Business Problem](#the-business-problem)
+- [Architecture](#architecture)
+- [Six-Layer Decision Pipeline](#six-layer-decision-pipeline)
+- [Cross-Cutting Concerns](#cross-cutting-concerns)
+- [Quick Start](#quick-start)
+- [Running the Platform](#running-the-platform)
+- [Technology Stack](#technology-stack)
+- [UI Pages](#ui-pages)
+- [LLM Configuration](#llm-configuration)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
 
-This platform separates those concerns into six layers that every banking
-AI product team needs but rarely builds correctly:
+---
 
-- **Context Assembly** delivers a live customer profile in under 200ms —
-  not last night's batch export.
-- **Vector Search** retrieves the right policy at decision time — not
-  hardcoded prompts that go stale when regulations change.
-- **Orchestration** routes agent work through a governed hub — agents
-  propose actions, never execute them directly.
-- **Guardrails** checks every proposed action against regulatory,
-  business, and fairness rules before it reaches a customer.
-- **A/B Evaluation** measures what works and closes the loop between
-  interventions and model governance.
-- **SDK Surface** gives product teams all six layers in a few lines of
-  code — not three months of reimplementation.
+## What Makes This Different
 
-The result: interventions that are live, governed, measurable, and
-explainable. One `trace_id` reconstructs the complete decision trail
-for any regulatory examination.
+| Capability | What it means in practice |
+|------------|---------------------------|
+| **Architecture-as-code** | Every layer has typed schemas, runtime services, integration tests, and UI visibility — not just documentation |
+| **Live architecture diagram** | `/architecture` animates the six-layer pipeline in real time from SSE events as each layer completes |
+| **No API key required** | Default mock LLM exercises all downstream logic — guardrails, experiments, drift, audit — without any cloud dependency |
+| **Regulatory replay** | One `trace_id` reconstructs customer context, policy retrieved, compliance checks run, action taken, and customer outcome |
+| **Runtime governance** | Guardrails run *before* execution — not as a post-hoc audit — with a versioned YAML rule store and SLA-backed approval queue |
+| **Feedback loop** | Outcome events feed Layer 5 so interventions improve over time without bypassing compliance |
 
-## Quick Start — No API Key Required
+---
+
+## The Business Problem
+
+Banks hold enough customer data to intervene before a customer misses a payment,
+churns, or disputes a charge. Most AI systems fail to act on it because they combine
+three problems:
+
+**Stale batch context** — Nightly risk scores reflect yesterday's account state, not
+this morning's transaction. An agent acting on stale data produces decisions that feel
+wrong to the customer even when the model is technically correct.
+
+**Ungoverned agent execution** — An agent that executes directly — send a push,
+modify a rate, create a case — has no compliance gate. One misconfigured prompt or
+injected instruction can trigger a customer-facing action that violates CFPB, ECOA,
+or UDAAP requirements.
+
+**No feedback loop** — An intervention that fires has no mechanism to measure whether
+it worked, which variant performed better, or whether the underlying model is drifting.
+Without outcome capture, there is no learning.
+
+This platform separates those concerns into six layers, each solving one problem,
+composable by any product team through a stable SDK.
+
+---
+
+## Architecture
+
+See [`docs/logical-architecture.md`](docs/logical-architecture.md) for the full
+platform runtime view: service boundaries, data flows, governance checkpoints,
+state stores, and feedback loop.
+
+
+### Logical Architecture Diagram
+
+The full styled HTML architecture diagram is versioned at
+[`docs/logical-architecture.html`](docs/logical-architecture.html). Some markdown
+hosts disable embedded iframes in README files; use the link if the preview is not
+rendered.
+
+<iframe src="docs/logical-architecture.html" title="Banking Agentic AI Platform logical architecture" width="100%" height="900" style="border:0; border-radius:12px; background:#050810;"></iframe>
+
+### Platform Overview
+
+```
+Product Teams / Operators
+        │
+        ▼
+┌─────────────────────────────────────────────────────────┐
+│  React UI  ·  SDK ActionClient  ·  FastAPI + SSE        │
+└──────────────────────────┬──────────────────────────────┘
+                           │  Blueprint Runner
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│  L1  Context Assembly   ←── Card, Banking, CRM,         │
+│      TTL profile write       Behavioral, Feature Store  │
+│                                                         │
+│  L2  Vector Search      ←── Knowledge Base (YAML)       │
+│      Hybrid dense+BM25                                  │
+│      Cross-encoder rerank                               │
+│                                                         │
+│  L3  Orchestration      ←── LLM (Mock / Ollama / API)   │
+│      Hub-and-spoke agents                               │
+│      Propose-only actions                               │
+│                                                         │
+│  L4  Guardrails         ←── Rule Store (versioned YAML) │
+│      REGULATORY→BUSINESS→AI                             │
+│      Block / Flag / Approve queue                       │
+│                                                         │
+│  L5  A/B + Model Gov.   ←── Experiment Store, MLflow    │
+│      Deterministic variant assignment                   │
+│      Drift detection + champion/challenger              │
+│                                                         │
+│  L6  Execution          ──► Push, SMS, CRM adapters     │
+│      Delivery receipts                                  │
+│      Outcome capture → feedback loop                    │
+└─────────────────────────────────────────────────────────┘
+        │ every layer writes to │
+        ▼                       ▼
+  Audit Records           Observability
+  (trace_id replay)       (Jaeger, Prometheus, Grafana)
+```
+
+### Key Architectural Boundaries
+
+| Boundary | Responsibility | Why It Exists |
+|----------|----------------|---------------|
+| **Layer 1 context boundary** | Source adapters normalize all upstream data into one `CustomerProfile` | Agents never depend on upstream system schemas — they degrade gracefully when sources fail |
+| **Layer 3/4 governance boundary** | Agents propose actions; guardrails authorize actions | Prevents LLM prompt behavior from becoming the control plane |
+| **Layer 5/6 execution boundary** | Experiments tag approved actions before delivery | Keeps measurement and execution coupled but independently auditable |
+| **Audit/observability boundary** | Audit proves decisions; metrics/traces operate the system | Separates regulatory replay from engineering telemetry |
+
+---
+
+## Six-Layer Decision Pipeline
+
+### Layer 1 — Context Assembly
+
+Assembles a unified `CustomerProfile` from multiple source systems in parallel.
+Source failures degrade safely: a CRM timeout marks `sources_degraded: ["crm"]`
+and the pipeline continues with the available data.
+
+- Parallel async fetch with 150ms per-adapter hard timeout
+- Schema normalization: raw source fields → canonical `CustomerProfile`
+- Feature store merge: live transactional data + pre-computed model signals
+- Writes to Valkey with `EX=300, NX=True` — immutable for the session lifetime
+- Writes an immutable audit record including profile hash and model versions used
+
+### Layer 2 — Vector Search
+
+Builds a scenario-aware query from the assembled profile and retrieves the
+most relevant policy chunks from the knowledge base.
+
+- Dynamic query construction from customer risk signals (not a static prompt)
+- Hybrid retrieval: dense (sentence-transformers) + sparse (BM25) merged with RRF
+- Metadata pre-filter by `product_line` and `jurisdiction` before ANN search
+- Cross-encoder reranking on top-20 candidates → top-3 policy chunks returned
+- KB version tracked in audit record for regulatory replay
+
+### Layer 3 — Multi-Agent Orchestration
+
+Routes work through a hub-and-spoke orchestrator. Agents never call each other
+directly. Tool authorization is enforced in code before any tool call executes.
+
+- Static pipeline definitions with conditional branches
+- `RiskScoringAgent` → `InterventionAgent` (or scenario-specific equivalents)
+- Agents receive typed `AgentContext`: customer profile + policy chunks + prior outputs
+- All agent outputs validated against Pydantic schemas before routing downstream
+- Failures (timeout, schema error, tool auth violation) route to `HumanReviewQueue`
+- Pipeline state checkpointed to Valkey after each step for recovery
+
+### Layer 4 — Guardrails & Policy Enforcement
+
+Every proposed action passes through three check categories in strict sequence
+before any execution is authorized.
+
+- **REGULATORY** checks run first — any failure blocks immediately, no further checks
+- **BUSINESS POLICY** checks — configurable YAML rules, hot-reloaded without restart
+- **RESPONSIBLE AI** checks — confidence thresholds, fairness (BISG/AIR), consistency
+- Flagged actions enter an SLA-backed approval queue with escalation ladders
+- Rule store is versioned: `rule_id + version` recorded in every audit entry
+- Reviewer decisions feed back to Layer 5 for model calibration
+
+### Layer 5 — A/B Evaluation & Model Governance
+
+Assigns experiment variants deterministically and provides the model governance
+infrastructure that keeps the platform's intelligence current.
+
+- Hash-based variant assignment: `hash(customer_id + experiment_id) % 100`
+  — the same customer always sees the same variant, enabling clean measurement
+- Variant conclusions require both statistical significance (p < 0.05) and
+  minimum sample size
+- Three-type drift detection: feature drift (KS test), prediction drift (PSI),
+  performance drift (rolling 30-day recall)
+- Champion/Challenger deployment: new models serve 5% of traffic before promotion
+- MLflow model registry: every version tagged with evaluation gate results
+
+### Layer 6 — SDK Surface & Execution
+
+The product-team interface. Product teams consume all six layers through
+a stable SDK without building any pipeline logic themselves.
+
+- Blueprint catalog: `PAYMENT_RISK_INTERVENTION`, `BILLING_DISPUTE_RESOLUTION`,
+  `CHURN_PREVENTION`, `FRAUD_ALERT`
+- Channel adapters: mock push/SMS/CRM in local mode; swappable in production
+- Execution returns `outcome_tracking_id` for async outcome capture
+- Outcome events (PUSH_OPENED, ENROLLED, IGNORED) feed back to Layer 5
+- Full `trace_id` threading from context assembly through outcome capture
+
+---
+
+## Cross-Cutting Concerns
+
+### Observability
+
+Three separate systems for three separate audiences:
+
+| System | Audience | Tooling | Retention |
+|--------|----------|---------|-----------|
+| **Metrics** | On-call engineers | Prometheus + Grafana | 7 days |
+| **Distributed traces** | Debugging engineers | OpenTelemetry + Jaeger | 30 days |
+| **Audit trail** | Compliance, legal, regulators | PostgreSQL + append-only writer | Permanent |
+
+The `trace_id` generated at Layer 1 entry threads through every span, log line,
+audit record, queue item, and outcome event. One ID reconstructs the complete
+customer journey.
+
+### MLOps & Drift Detection
+
+- Feature store as single source of truth — eliminates training/serving skew
+- Signal-based retraining triggers (PSI, recall degradation, AIR drift)
+- Evaluation gate: accuracy + fairness (AIR ≥ 0.80) + segment regression
+- Model cards required per version — compliance artifact, not engineering artifact
+
+---
+
+## Quick Start
+
+No API key required. Runs entirely locally.
 
 ```bash
 git clone <repository-url>
-cd banking-agentic-ai-platform
-make install
-make docker-up
-cp .env.example .env
-make demo
+cd banking-agentic-platform
 
-# Output: full pipeline trace for Marcus Webb (C002)
-# No API key. No external service. Runs entirely locally.
+make install        # uv sync + pnpm install in ui/
+make docker-up      # starts all 7 local services
+
+cp .env.example .env
+make migrate        # run Alembic migrations
+
+make demo
+# Runs Marcus Webb (C002) through payment risk intervention
+# All 6 layers execute with mock LLM
+# Audit trail printed to console
 ```
 
-To run the API and UI:
+Start the full API and UI:
 
 ```bash
 make dev
-# UI:  http://localhost:5173
 # API: http://localhost:8000
+# UI:  http://localhost:5173
 ```
 
-## Current Implementation
+**Local services started by `make docker-up`:**
 
-The local implementation includes:
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Valkey | `localhost:6379` | TTL session context store |
+| PostgreSQL | `localhost:5432` | Audit log, feature store, experiments |
+| Qdrant | `localhost:6333` | Vector store for knowledge base |
+| Jaeger | `localhost:16686` | Distributed trace visualization |
+| Prometheus | `localhost:9090` | Metrics collection |
+| Grafana | `localhost:3000` | Metrics dashboards (admin/admin) |
+| MLflow | `localhost:5001` | Model registry + experiment tracking |
 
-- FastAPI API with pipeline run/status, SSE events, audit replay, guardrails,
-  experiments, model registry, drift reports, and runtime config endpoints.
-- React/Vite UI routes for `/about`, `/`, `/architecture`, `/audit/:traceId`,
-  `/experiments`, `/drift`, `/guardrails`, `/models`, and `/settings`.
-- Runtime LLM switching from the Settings page using process-local config:
-  Mock LLM, Ollama, or API mode. The UI never writes `.env`, restarts the
-  server, or stores API keys in browser storage.
-- Local Docker services for Valkey, PostgreSQL, Qdrant, Jaeger, Prometheus,
-  Grafana, and MLflow.
-- Process-local demo/API audit replay for live UI runs, plus PostgreSQL audit
-  writer support in the adapter layer.
+---
 
-## Layers
+## Running the Platform
 
-**Layer 1 — Context Assembly**  
-Fetches card, banking, CRM, behavioral, and feature-store signals in parallel.
-Source failures degrade safely into `partial_context` instead of failing the
-pipeline.
+### Demo
 
-**Layer 2 — Vector Search**  
-Builds a scenario-aware query from the live profile, runs hybrid dense + BM25
-retrieval, merges with RRF, and returns policy chunks with lineage.
+```bash
+make demo
+# Default: C002 (Marcus Webb), payment_risk_intervention, mock LLM
 
-**Layer 3 — Orchestration**  
-Runs hub-and-spoke agent workflows. Agents propose typed actions only; tool
-authorization is enforced in code before tool execution.
+python -m platform.demo --customer C001 --scenario churn_prevention
+python -m platform.demo --customer C003 --scenario billing_dispute_resolution
+```
 
-**Layer 4 — Guardrails**  
-Evaluates proposed actions through regulatory, business policy, and responsible
-AI checks. Flagged actions enter an SLA-backed approval queue.
+### Available Make Targets
 
-**Layer 5 — A/B + Model Governance**  
-Assigns variants deterministically, tracks outcomes, and exposes drift/model
-governance signals for champion/challenger models.
+```bash
+make install      # install Python + UI dependencies
+make dev          # start all services + API + UI hot-reload
+make demo         # run standalone C002 pipeline demo
+make test         # full pytest suite with coverage
+make test-unit    # unit tests only (no containers)
+make test-int     # integration tests (testcontainers)
+make typecheck    # mypy (Python) + tsc (TypeScript)
+make lint         # ruff + eslint
+make format       # ruff format + prettier
+make docker-up    # start all 7 Docker services
+make docker-down  # stop all services
+make migrate      # run Alembic database migrations
+```
 
-**Layer 6 — SDK + Execution**  
-Presents the product-team surface: blueprint execution, channel adapters,
-delivery receipts, and outcome capture.
-
-**Cross-cutting — Observability + Audit**  
-Every layer emits metrics, traces, logs, and append-only audit evidence linked
-by `trace_id`. The demo/API runner keeps audit replay in process memory for
-local interactivity; the adapter layer includes PostgreSQL audit inserts for
-durable storage paths.
+---
 
 ## Technology Stack
 
-| Area | Stack |
-| --- | --- |
-| Backend | Python, FastAPI, Pydantic v2, asyncio |
-| Storage | Valkey/Redis, PostgreSQL, Qdrant, MLflow |
-| Retrieval | sentence-transformers, rank_bm25, RRF reranking |
-| LLM | Mock LLM by default, Ollama or LiteLLM optional |
-| Observability | structlog, OpenTelemetry, Prometheus, Grafana, Jaeger |
-| Frontend | React, TypeScript, Vite, TanStack Query, Zustand |
-| UI | Tailwind CSS, React Flow, Recharts, lucide-react |
-| Testing | pytest, pytest-asyncio, testcontainers, Playwright smoke checks |
+| Layer | Technology | Role |
+|-------|-----------|------|
+| **Backend** | Python 3.12, FastAPI, Pydantic v2, asyncio | API, pipeline orchestration, typed schemas |
+| **Context store** | Valkey (Redis-compatible, Apache 2.0) | TTL customer profiles, pipeline state |
+| **Relational store** | PostgreSQL 16 | Audit log, feature store, experiments, queue |
+| **Vector store** | Qdrant | Knowledge base embeddings and hybrid retrieval |
+| **Embeddings** | sentence-transformers (`all-MiniLM-L6-v2`) | Dense vectors; no API key required |
+| **Sparse retrieval** | rank_bm25 | BM25 term matching for hybrid search |
+| **LLM** | Mock (default) · Ollama · LiteLLM | Agent reasoning; mock exercises all platform logic |
+| **Model registry** | MLflow | Champion/challenger tracking, experiment metadata |
+| **Drift monitoring** | Evidently | PSI, KS test, drift reports |
+| **Observability** | structlog · OpenTelemetry · Prometheus | Structured logs, distributed traces, SLO metrics |
+| **Frontend** | React 18, TypeScript, Vite, TanStack Query, Zustand | UI shell, live SSE updates, state management |
+| **UI components** | Tailwind CSS, React Flow, Recharts, lucide-react | Styling, architecture diagram, charts, icons |
+| **Testing** | pytest, pytest-asyncio, testcontainers | Unit, integration, Playwright smoke checks |
+| **Infra** | Docker Compose, Alembic | Local service orchestration, DB migrations |
 
-## Optional: Real LLM Inference
+All dependencies are open source. No proprietary cloud SDK required to run.
 
-You can switch LLM backends from the `/settings` page while the server is
-running. The setting is in-memory for the current server process.
+---
 
-```bash
-# Local model (free, no account)
-brew install ollama
-ollama pull llama3.2
-echo "LLM_BACKEND=ollama" >> .env
-make demo
+## UI Pages
 
-# Cloud API (requires key)
-echo "LLM_BACKEND=api" >> .env
-echo "ANTHROPIC_API_KEY=your-key" >> .env
-make demo
+| Route | Page | Purpose |
+|-------|------|---------|
+| `/about` | About | Business problem, architecture narrative, design principles |
+| `/` | Pipeline Runner | Trigger runs, watch live layer-by-layer execution log |
+| `/architecture` | Architecture View | Animated 6-layer diagram; drill into problem, decisions, last run per layer |
+| `/audit/:traceId` | Audit Trail | Full timeline with regulatory replay (8 audit record types) |
+| `/experiments` | Experiments | A/B variant stats, statistical significance, conversion charts |
+| `/drift` | Drift Monitor | PSI trend with thresholds, three-type drift breakdown, Evidently report |
+| `/guardrails` | Guardrails | Rule store viewer, approval queue with SLA countdown, compliance context |
+| `/models` | Model Registry | Champion/challenger status, evaluation gate results, traffic split |
+| `/settings` | Settings | Runtime LLM switching (Mock → Ollama → API) without server restart |
+
+---
+
+## LLM Configuration
+
+The platform runs fully without an API key. Switch modes from `/settings` in the UI
+or via `.env`.
+
+| Mode | Config | Notes |
+|------|--------|-------|
+| **Mock** (default) | `LLM_BACKEND=mock` | Scripted realistic responses. Exercises all downstream logic. No dependency. |
+| **Ollama** | `LLM_BACKEND=ollama` | Real local inference. Free. No account. Requires `ollama pull llama3.2`. |
+| **API** | `LLM_BACKEND=api` + key | Production-quality reasoning. Supports Claude, GPT-4o, and 100+ providers via LiteLLM. |
+
+Runtime switching via `/settings` updates the in-memory config for the current
+server process — no restart, no `.env` file writes, no API keys stored in the browser.
+
+---
+
+## Project Structure
+
+```
+banking-agentic-platform/
+│
+├── platform/                    # Python backend
+│   ├── core/                    # Shared schemas, interfaces, exceptions, config
+│   ├── adapters/                # Infrastructure adapter implementations
+│   ├── layer1_context/          # Context Assembly service + source adapters
+│   ├── layer2_vector/           # Vector Search service + KB loader
+│   ├── layer3_orchestration/    # Orchestrator + agents + tool registry
+│   ├── layer4_guardrails/       # Guardrails service + rule engine + approval queue
+│   ├── layer5_ab/               # A/B service + drift monitor + model registry
+│   ├── layer6_sdk/              # SDK client + blueprints + channel adapters
+│   ├── api/                     # FastAPI application + routers + SSE
+│   ├── observability/           # structlog, OpenTelemetry, Prometheus wiring
+│   └── demo.py                  # Standalone pipeline demo script
+│
+├── ui/                          # React + TypeScript frontend
+│   └── src/
+│       ├── pages/               # One file per UI route
+│       ├── architecture/        # Architecture View components (React Flow)
+│       ├── components/          # Shared components
+│       ├── hooks/               # SSE hook, Zustand pipeline store
+│       └── api/                 # Typed API client
+│
+├── knowledge_base/              # Policy YAML documents (indexed into Qdrant)
+├── rules/                       # Guardrail rule store (versioned YAML)
+├── docs/                        # Architecture docs and diagrams
+├── tests/                       # Unit + integration test suites
+├── alembic/                     # Database migrations
+├── docker-compose.yml           # All 7 local services
+├── pyproject.toml               # Python dependencies + tool config
+└── Makefile                     # All development commands
 ```
 
-## Useful Commands
-
-```bash
-make install     # uv sync + pnpm install
-make dev         # docker services + API + UI dev server
-make demo        # run the standalone C002 payment-risk demo
-make test        # full pytest suite
-make test-unit   # unit tests only
-make test-int    # integration tests only
-make typecheck   # mypy + TypeScript
-make lint        # ruff + TypeScript
-make format      # ruff format + prettier
-make docker-up   # seven local services
-make docker-down
-make migrate     # run Alembic migrations
-```
+---
 
 ## Contributing
 
-Read the local planning specs under `docs/planning/` when they are present,
-especially `AGENTS.md` and `architecture.md`, before changing a layer. Keep
-field names aligned with the architecture spec, use interfaces for external
-dependencies, keep business logic async, and add tests with each behavior
-change.
+Read `AGENTS.md` and the relevant section of `docs/architecture.md` before
+modifying any layer. The architecture document is the ground truth for field names,
+schema definitions, and design decisions — code must trace back to it.
+
+**Standards:**
+- Type hints on every function signature
+- Docstrings on every public class and method
+- Interface (`Protocol`) for every external dependency
+- `structlog` for all logging — `trace_id` in every log line
+- Async throughout — no sync I/O in business logic
+- Test file alongside every new module
+
+---
+
+*Banking Agentic AI Platform — Reference Implementation*
+*Author: Sarala Biswal*

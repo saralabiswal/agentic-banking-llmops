@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banking Agentic AI Platform — Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:         #050810;
+    --surface:    #090d16;
+    --card:       #0d1320;
+    --border:     #1a2236;
+    --border-md:  #243050;
+    --text:       #cdd9ec;
+    --text-mid:   #64748b;
+    --text-dim:   #2d3f58;
+
+    --l1: #3b82f6; --l1-bg: rgba(59,130,246,0.08); --l1-bd: rgba(59,130,246,0.25);
+    --l2: #a855f7; --l2-bg: rgba(168,85,247,0.08); --l2-bd: rgba(168,85,247,0.25);
+    --l3: #10b981; --l3-bg: rgba(16,185,129,0.08); --l3-bd: rgba(16,185,129,0.25);
+    --l4: #ef4444; --l4-bg: rgba(239,68,68,0.08);  --l4-bd: rgba(239,68,68,0.25);
+    --l5: #f59e0b; --l5-bg: rgba(245,158,11,0.08); --l5-bd: rgba(245,158,11,0.25);
+    --l6: #06b6d4; --l6-bg: rgba(6,182,212,0.08);  --l6-bd: rgba(6,182,212,0.25);
+    --obs: #fb923c; --mlops: #8b5cf6;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    padding: 40px 32px 60px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { max-width: 560px; }
+  .platform-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--l1);
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #f0f6ff;
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+  .tagline {
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1.7;
+  }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+  .badge-blue   { color: var(--l1); border-color: var(--l1-bd); background: var(--l1-bg); }
+  .badge-green  { color: var(--l3); border-color: var(--l3-bd); background: var(--l3-bg); }
+  .badge-amber  { color: var(--l5); border-color: var(--l5-bd); background: var(--l5-bg); }
+  .badge-purple { color: var(--l2); border-color: var(--l2-bd); background: var(--l2-bg); }
+
+  .header-meta {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-mid);
+    line-height: 1.9;
+    padding-top: 4px;
+  }
+  .header-meta span { color: var(--text); font-weight: 600; }
+
+  /* ── GRID LAYOUT ── */
+  .diagram-grid {
+    display: grid;
+    grid-template-columns: 180px 1fr 180px;
+    grid-template-rows: auto;
+    gap: 0;
+    align-items: start;
+  }
+
+  /* ── LEFT COLUMN: INPUTS ── */
+  .col-inputs { padding-right: 16px; padding-top: 28px; }
+  .input-group { margin-bottom: 12px; }
+  .input-group-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    padding-left: 2px;
+  }
+  .input-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    margin-bottom: 5px;
+    font-size: 11px;
+    color: var(--text-mid);
+    line-height: 1.5;
+  }
+  .input-card strong { display: block; color: var(--text); font-size: 10px; font-weight: 600; margin-bottom: 1px; }
+  .input-card.degradable { border-left: 2px solid var(--l4); }
+  .input-connector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0 3px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+  }
+  .input-connector::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: var(--border-md);
+  }
+
+  /* ── CENTER COLUMN: PIPELINE ── */
+  .col-pipeline {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .pipeline-header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .pipeline-header-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-mid);
+  }
+  .pipeline-header-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--l3);
+    box-shadow: 0 0 6px var(--l3);
+  }
+
+  /* TRIGGER */
+  .trigger-node {
+    margin: 16px 16px 0;
+    background: var(--card);
+    border: 1px solid var(--border-md);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .trigger-icon {
+    font-size: 14px;
+    color: var(--text-mid);
+  }
+  .trigger-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .trigger-sub {
+    font-size: 10px;
+    color: var(--text-mid);
+    margin-top: 1px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* LAYER CARDS */
+  .layers { padding: 0 16px 16px; }
+
+  .edge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 2px 0;
+    position: relative;
+  }
+  .edge-line {
+    width: 1px;
+    height: 20px;
+    background: linear-gradient(to bottom, var(--border-md), var(--border));
+    margin: 0 auto;
+    display: block;
+  }
+  .edge-label {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .layer-card {
+    border-radius: 8px;
+    border: 1px solid;
+    padding: 12px 14px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .layer-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--layer-bg);
+    pointer-events: none;
+  }
+
+  .layer-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .layer-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+  }
+  .layer-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e8f0ff;
+    flex: 1;
+  }
+  .layer-latency {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .layer-desc {
+    font-size: 10px;
+    color: var(--text-mid);
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .layer-tech {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .tech-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-mid);
+    letter-spacing: 0.05em;
+  }
+
+  /* layer variants */
+  .l1 { border-color: var(--l1-bd); --layer-bg: var(--l1-bg); }
+  .l2 { border-color: var(--l2-bd); --layer-bg: var(--l2-bg); }
+  .l3 { border-color: var(--l3-bd); --layer-bg: var(--l3-bg); }
+  .l4 { border-color: var(--l4-bd); --layer-bg: var(--l4-bg); }
+  .l5 { border-color: var(--l5-bd); --layer-bg: var(--l5-bg); }
+  .l6 { border-color: var(--l6-bd); --layer-bg: var(--l6-bg); }
+
+  .l1 .layer-num { background: var(--l1-bg); color: var(--l1); }
+  .l2 .layer-num { background: var(--l2-bg); color: var(--l2); }
+  .l3 .layer-num { background: var(--l3-bg); color: var(--l3); }
+  .l4 .layer-num { background: var(--l4-bg); color: var(--l4); }
+  .l5 .layer-num { background: var(--l5-bg); color: var(--l5); }
+  .l6 .layer-num { background: var(--l6-bg); color: var(--l6); }
+
+  .l1 .layer-latency { color: var(--l1); }
+  .l2 .layer-latency { color: var(--l2); }
+  .l3 .layer-latency { color: var(--l3); }
+  .l4 .layer-latency { color: var(--l4); }
+  .l5 .layer-latency { color: var(--l5); }
+  .l6 .layer-latency { color: var(--l6); }
+
+  /* OUTCOME */
+  .outcome-node {
+    margin: 0 16px 16px;
+    background: rgba(16,185,129,0.05);
+    border: 1px solid rgba(16,185,129,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .outcome-label { font-size: 11px; font-weight: 600; color: var(--l3); }
+  .outcome-sub { font-size: 10px; color: var(--text-mid); font-family: 'JetBrains Mono', monospace; }
+
+  /* CROSS-CUTTING BARS */
+  .cross-wrapper {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .cross-obs  { left: -1px; }
+  .cross-ml   { right: -1px; }
+  .cross-bar {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 12px 0;
+    height: calc(100% - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    width: 18px;
+  }
+  .cross-bar-obs {
+    background: rgba(251,146,60,0.06);
+    border: 1px solid rgba(251,146,60,0.2);
+    color: var(--obs);
+    border-left: 2px solid var(--obs);
+  }
+  .cross-bar-ml {
+    background: rgba(139,92,246,0.06);
+    border: 1px solid rgba(139,92,246,0.2);
+    color: var(--mlops);
+    border-right: 2px solid var(--mlops);
+  }
+
+  /* ── RIGHT COLUMN: STATE + FEEDBACK ── */
+  .col-right { padding-left: 16px; padding-top: 28px; }
+  .right-group { margin-bottom: 20px; }
+  .right-group-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .state-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    margin-bottom: 5px;
+    font-size: 10px;
+    color: var(--text-mid);
+    line-height: 1.5;
+  }
+  .state-card strong { display: block; color: var(--text); font-size: 10px; font-weight: 600; margin-bottom: 1px; }
+  .state-card.has-trace { border-left: 2px solid var(--l1); }
+  .state-card.has-sla   { border-left: 2px solid var(--l4); }
+  .state-card.has-exp   { border-left: 2px solid var(--l5); }
+  .state-card.has-ml    { border-left: 2px solid var(--mlops); }
+
+  .feedback-arrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 4px 0;
+    padding-left: 4px;
+  }
+
+  /* ── BOTTOM ROW: OBSERVABILITY ── */
+  .bottom-row {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+  .obs-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .obs-card-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .obs-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .obs-card-desc {
+    font-size: 10px;
+    color: var(--text-mid);
+    line-height: 1.6;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .obs-audience {
+    margin-top: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ── LEGEND ── */
+  .legend {
+    margin-top: 28px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 10px 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    flex-wrap: wrap;
+  }
+  .legend-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--text-mid);
+  }
+  .legend-box {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    border: 1px solid;
+    flex-shrink: 0;
+  }
+  .legend-line {
+    width: 20px; height: 1px;
+    flex-shrink: 0;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="platform-tag">Production Reference Architecture</div>
+    <h1>Banking Agentic AI Platform</h1>
+    <div class="tagline">
+      Six governed layers — from live customer context to executed action —
+      with regulatory replay, runtime guardrails, and A/B feedback loops.
+    </div>
+    <div class="badges">
+      <span class="badge badge-blue">Cloud Agnostic</span>
+      <span class="badge badge-green">No API Key</span>
+      <span class="badge badge-amber">Open Source</span>
+      <span class="badge badge-purple">Regulatory Replay</span>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div>Author <span>Sarala Biswal</span></div>
+    <div>Layers <span>6 + 2 cross-cutting</span></div>
+    <div>Runtime <span>Python 3.12 · React 18</span></div>
+    <div>LLM <span>Mock · Ollama · LiteLLM</span></div>
+    <div>Version <span>v1.0 · May 2026</span></div>
+  </div>
+</div>
+
+<!-- MAIN DIAGRAM GRID -->
+<div class="diagram-grid">
+
+  <!-- LEFT: INPUTS -->
+  <div class="col-inputs">
+
+    <div class="input-group">
+      <div class="input-group-title">Customer Signals</div>
+      <div class="input-card">
+        <strong>Card System</strong>
+        balance, utilization, missed pmts
+      </div>
+      <div class="input-connector">→ L1</div>
+      <div class="input-card">
+        <strong>Core Banking</strong>
+        checking, savings, NSF events
+      </div>
+      <div class="input-connector">→ L1</div>
+      <div class="input-card degradable">
+        <strong>CRM Adapter</strong>
+        NPS, tenure · can degrade gracefully
+      </div>
+      <div class="input-connector">→ L1</div>
+      <div class="input-card">
+        <strong>Behavioral</strong>
+        app events, interaction history
+      </div>
+      <div class="input-connector">→ L1</div>
+      <div class="input-card">
+        <strong>Feature Store</strong>
+        risk, churn, CLV, propensity scores
+      </div>
+      <div class="input-connector">→ L1</div>
+    </div>
+
+    <div class="input-group" style="margin-top:16px;">
+      <div class="input-group-title">Policy Inputs</div>
+      <div class="input-card">
+        <strong>Knowledge Base</strong>
+        YAML policies, regulations, playbooks
+      </div>
+      <div class="input-connector">→ L2</div>
+      <div class="input-card">
+        <strong>Rule Store</strong>
+        versioned YAML guardrail rules
+      </div>
+      <div class="input-connector">→ L4</div>
+    </div>
+
+  </div>
+
+  <!-- CENTER: PIPELINE -->
+  <div class="col-pipeline">
+
+    <!-- Cross-cutting bars -->
+    <div class="cross-wrapper cross-obs">
+      <div class="cross-bar cross-bar-obs">Observability</div>
+    </div>
+    <div class="cross-wrapper cross-ml">
+      <div class="cross-bar cross-bar-ml">MLOps</div>
+    </div>
+
+    <div class="pipeline-header">
+      <div class="status-dot"></div>
+      <div class="pipeline-header-title">Six-Layer Decision Pipeline</div>
+      <div class="pipeline-header-sub">trace_id threads all layers</div>
+    </div>
+
+    <!-- TRIGGER -->
+    <div class="trigger-node">
+      <div class="trigger-icon">⚡</div>
+      <div>
+        <div class="trigger-label">Inbound Trigger</div>
+        <div class="trigger-sub">scheduler · customer_event · API call</div>
+      </div>
+    </div>
+
+    <div class="layers">
+
+      <!-- L1 -->
+      <div style="display:flex;align-items:center;padding:6px 0;">
+        <div style="flex:1;height:1px;background:linear-gradient(to right,rgba(59,130,246,0.4),transparent);"></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--l1);padding:0 8px;">session_id + customer_id</div>
+        <div style="flex:1;height:1px;background:linear-gradient(to left,rgba(59,130,246,0.4),transparent);"></div>
+      </div>
+      <div class="layer-card l1">
+        <div class="layer-header">
+          <span class="layer-num">L1</span>
+          <span class="layer-name">Context Assembly</span>
+          <span class="layer-latency">≤ 200ms</span>
+        </div>
+        <div class="layer-desc">
+          Parallel async fetch from all source adapters (150ms hard timeout each).
+          Graceful degradation — source failure marks partial_context, never fails the pipeline.
+          Unified CustomerProfile written to Valkey with EX=300, NX=True.
+        </div>
+        <div class="layer-tech">
+          <span class="tech-tag">asyncio.gather</span>
+          <span class="tech-tag">Valkey TTL</span>
+          <span class="tech-tag">Pydantic v2</span>
+          <span class="tech-tag">Feature Store</span>
+        </div>
+      </div>
+
+      <!-- L2 -->
+      <div style="display:flex;align-items:center;padding:6px 0;">
+        <div style="flex:1;height:1px;background:linear-gradient(to right,rgba(168,85,247,0.4),transparent);"></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--l2);padding:0 8px;">session_id → profile key</div>
+        <div style="flex:1;height:1px;background:linear-gradient(to left,rgba(168,85,247,0.4),transparent);"></div>
+      </div>
+      <div class="layer-card l2">
+        <div class="layer-header">
+          <span class="layer-num">L2</span>
+          <span class="layer-name">Vector Search</span>
+          <span class="layer-latency">≤ 80ms</span>
+        </div>
+        <div class="layer-desc">
+          Dynamic query built from live profile signals. Hybrid dense + BM25 retrieval
+          merged with RRF. Cross-encoder reranks top-20 → top-3 policy chunks returned.
+          KB version tracked in audit record.
+        </div>
+        <div class="layer-tech">
+          <span class="tech-tag">sentence-transformers</span>
+          <span class="tech-tag">rank_bm25</span>
+          <span class="tech-tag">Qdrant</span>
+          <span class="tech-tag">RRF merge</span>
+        </div>
+      </div>
+
+      <!-- L3 -->
+      <div style="display:flex;align-items:center;padding:6px 0;">
+        <div style="flex:1;height:1px;background:linear-gradient(to right,rgba(16,185,129,0.4),transparent);"></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--l3);padding:0 8px;">policy chunks</div>
+        <div style="flex:1;height:1px;background:linear-gradient(to left,rgba(16,185,129,0.4),transparent);"></div>
+      </div>
+      <div class="layer-card l3">
+        <div class="layer-header">
+          <span class="layer-num">L3</span>
+          <span class="layer-name">Multi-Agent Orchestration</span>
+          <span class="layer-latency">≤ 15s</span>
+        </div>
+        <div class="layer-desc">
+          Hub-and-spoke orchestrator — agents never call each other directly. Tool
+          authorization enforced in code before any call. Agents PROPOSE only.
+          Schema-validated outputs. Failures route to HumanReviewQueue.
+        </div>
+        <div class="layer-tech">
+          <span class="tech-tag">LiteLLM / Ollama</span>
+          <span class="tech-tag">Tool registry</span>
+          <span class="tech-tag">Valkey checkpoint</span>
+          <span class="tech-tag">Pydantic outputs</span>
+        </div>
+      </div>
+
+      <!-- L4 -->
+      <div style="display:flex;align-items:center;padding:6px 0;">
+        <div style="flex:1;height:1px;background:linear-gradient(to right,rgba(239,68,68,0.4),transparent);"></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--l4);padding:0 8px;">proposed actions</div>
+        <div style="flex:1;height:1px;background:linear-gradient(to left,rgba(239,68,68,0.4),transparent);"></div>
+      </div>
+      <div class="layer-card l4">
+        <div class="layer-header">
+          <span class="layer-num">L4</span>
+          <span class="layer-name">Guardrails &amp; Policy</span>
+          <span class="layer-latency">≤ 150ms</span>
+        </div>
+        <div class="layer-desc">
+          REGULATORY → BUSINESS POLICY → RESPONSIBLE AI in strict sequence.
+          Regulatory block stops all further checks. Flagged actions enter
+          SLA-backed approval queue. Rule versions recorded for replay.
+        </div>
+        <div class="layer-tech">
+          <span class="tech-tag">YAML rule store</span>
+          <span class="tech-tag">BISG fairness</span>
+          <span class="tech-tag">Approval queue</span>
+          <span class="tech-tag">hot-reload</span>
+        </div>
+      </div>
+
+      <!-- L5 -->
+      <div style="display:flex;align-items:center;padding:6px 0;">
+        <div style="flex:1;height:1px;background:linear-gradient(to right,rgba(245,158,11,0.4),transparent);"></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--l5);padding:0 8px;">approved actions</div>
+        <div style="flex:1;height:1px;background:linear-gradient(to left,rgba(245,158,11,0.4),transparent);"></div>
+      </div>
+      <div class="layer-card l5">
+        <div class="layer-header">
+          <span class="layer-num">L5</span>
+          <span class="layer-name">A/B Evaluation &amp; Model Gov.</span>
+          <span class="layer-latency">≤ 10ms</span>
+        </div>
+        <div class="layer-desc">
+          Hash-based deterministic variant assignment. Outcomes feed back into
+          experiment results. Champion/Challenger (5% traffic). Three-type drift
+          detection: feature (KS), prediction (PSI), performance (recall 30d).
+        </div>
+        <div class="layer-tech">
+          <span class="tech-tag">MLflow</span>
+          <span class="tech-tag">Evidently</span>
+          <span class="tech-tag">scipy stats</span>
+          <span class="tech-tag">hash bucket</span>
+        </div>
+      </div>
+
+      <!-- L6 -->
+      <div style="display:flex;align-items:center;padding:6px 0;">
+        <div style="flex:1;height:1px;background:linear-gradient(to right,rgba(6,182,212,0.4),transparent);"></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--l6);padding:0 8px;">variant-tagged actions</div>
+        <div style="flex:1;height:1px;background:linear-gradient(to left,rgba(6,182,212,0.4),transparent);"></div>
+      </div>
+      <div class="layer-card l6">
+        <div class="layer-header">
+          <span class="layer-num">L6</span>
+          <span class="layer-name">SDK Surface &amp; Execution</span>
+          <span class="layer-latency">≤ 20ms</span>
+        </div>
+        <div class="layer-desc">
+          Blueprint catalog for product teams. Channel adapters: push, SMS, CRM.
+          Delivery receipts + async outcome capture. Outcomes feed back to L5.
+          trace_id threads from context assembly through enrollment.
+        </div>
+        <div class="layer-tech">
+          <span class="tech-tag">Blueprint runner</span>
+          <span class="tech-tag">FastAPI SSE</span>
+          <span class="tech-tag">Outcome API</span>
+          <span class="tech-tag">trace_id</span>
+        </div>
+      </div>
+
+    </div><!-- /layers -->
+
+    <!-- OUTCOME -->
+    <div class="outcome-node">
+      <div style="font-size:14px;">↩</div>
+      <div>
+        <div class="outcome-label">Outcome Capture</div>
+        <div class="outcome-sub">PUSH_OPENED · ENROLLED · IGNORED → feedback loop to L5</div>
+      </div>
+    </div>
+
+  </div><!-- /col-pipeline -->
+
+  <!-- RIGHT: STATE + FEEDBACK -->
+  <div class="col-right">
+
+    <div class="right-group">
+      <div class="right-group-title">Runtime State</div>
+      <div class="state-card has-trace">
+        <strong>Valkey / Redis</strong>
+        TTL customer profile · pipeline state checkpoint
+      </div>
+      <div class="state-card has-trace">
+        <strong>Audit Records</strong>
+        trace_id-linked · append-only · regulatory replay
+      </div>
+      <div class="state-card has-sla">
+        <strong>Approval Queue</strong>
+        SLA countdown · reviewer decisions · priority tiers
+      </div>
+      <div class="state-card has-exp">
+        <strong>Experiment Store</strong>
+        variants · samples · conversions · confidence
+      </div>
+      <div class="state-card has-ml">
+        <strong>MLflow Registry</strong>
+        champion · challenger · evaluation gates
+      </div>
+    </div>
+
+    <div class="right-group">
+      <div class="right-group-title">Feedback Loop</div>
+      <div class="state-card">
+        <strong>Delivery Receipts</strong>
+        push sent · SMS delivered · case created
+      </div>
+      <div class="feedback-arrow">↓ flows to L5</div>
+      <div class="state-card">
+        <strong>Outcome Events</strong>
+        opened · enrolled · ignored · complaint
+      </div>
+      <div class="feedback-arrow">↓ flows to L5</div>
+      <div class="state-card">
+        <strong>Reviewer Decisions</strong>
+        approve/reject → L4 calibration + L5 signals
+      </div>
+      <div class="feedback-arrow">↓ flows to MLflow</div>
+      <div class="state-card">
+        <strong>Drift Signals</strong>
+        PSI · recall · AIR → retraining triggers
+      </div>
+    </div>
+
+    <div class="right-group">
+      <div class="right-group-title">SLO Targets</div>
+      <div class="state-card" style="border-left:2px solid var(--l1);">
+        <strong style="color:var(--l1);">L1</strong> ≤ 200ms p99 · ≥ 99.9% avail
+      </div>
+      <div class="state-card" style="border-left:2px solid var(--l2);">
+        <strong style="color:var(--l2);">L2</strong> ≤ 80ms p99 · precision ≥ 85%
+      </div>
+      <div class="state-card" style="border-left:2px solid var(--l3);">
+        <strong style="color:var(--l3);">L3</strong> ≤ 15s p99 · schema fail ≤ 1%
+      </div>
+      <div class="state-card" style="border-left:2px solid var(--l4);">
+        <strong style="color:var(--l4);">L4</strong> ≤ 150ms p99 · AIR ≥ 0.80
+      </div>
+      <div class="state-card" style="border-left:2px solid var(--l5);">
+        <strong style="color:var(--l5);">L5</strong> assign ≤ 10ms · confidence ≥ 0.95
+      </div>
+      <div class="state-card" style="border-left:2px solid var(--l6);">
+        <strong style="color:var(--l6);">L6</strong> ≤ 20ms p99 · delivery ≥ 98%
+      </div>
+    </div>
+
+  </div><!-- /col-right -->
+
+</div><!-- /diagram-grid -->
+
+<!-- OBSERVABILITY ROW -->
+<div class="bottom-row">
+  <div class="obs-card">
+    <div class="obs-card-title">
+      <div class="obs-dot" style="background:var(--obs);box-shadow:0 0 5px var(--obs);"></div>
+      Operational Observability
+    </div>
+    <div class="obs-card-desc">
+      Prometheus + Grafana<br>
+      Per-layer SLO metrics + error budgets<br>
+      CloudWatch / OTLP compatible<br>
+      Alerting via PagerDuty on breach
+    </div>
+    <div class="obs-audience" style="color:var(--obs);">Audience: on-call engineers</div>
+  </div>
+  <div class="obs-card">
+    <div class="obs-card-title">
+      <div class="obs-dot" style="background:var(--l1);box-shadow:0 0 5px var(--l1);"></div>
+      Distributed Tracing
+    </div>
+    <div class="obs-card-desc">
+      OpenTelemetry → Jaeger<br>
+      One trace_id waterfall per run<br>
+      CRM timeout visible in span tree<br>
+      Avg root-cause: &lt; 2 minutes
+    </div>
+    <div class="obs-audience" style="color:var(--l1);">Audience: debugging engineers</div>
+  </div>
+  <div class="obs-card">
+    <div class="obs-card-title">
+      <div class="obs-dot" style="background:var(--l4);box-shadow:0 0 5px var(--l4);"></div>
+      Regulatory Audit Trail
+    </div>
+    <div class="obs-card-desc">
+      8 audit record types per pipeline run<br>
+      trace_id → full journey reconstruction<br>
+      Append-only writes · S3 Object Lock<br>
+      7-year retention (SEC Rule 17a-4)
+    </div>
+    <div class="obs-audience" style="color:var(--l4);">Audience: compliance · legal · regulators</div>
+  </div>
+</div>
+
+<!-- LEGEND + FOOTER -->
+<div class="legend">
+  <div class="legend-title">Legend</div>
+  <div class="legend-item">
+    <div class="legend-box" style="background:var(--l1-bg);border-color:var(--l1);"></div>
+    L1 Context (blue)
+  </div>
+  <div class="legend-item">
+    <div class="legend-box" style="background:var(--l2-bg);border-color:var(--l2);"></div>
+    L2 Vector (purple)
+  </div>
+  <div class="legend-item">
+    <div class="legend-box" style="background:var(--l3-bg);border-color:var(--l3);"></div>
+    L3 Orchestration (emerald)
+  </div>
+  <div class="legend-item">
+    <div class="legend-box" style="background:var(--l4-bg);border-color:var(--l4);"></div>
+    L4 Guardrails (red)
+  </div>
+  <div class="legend-item">
+    <div class="legend-box" style="background:var(--l5-bg);border-color:var(--l5);"></div>
+    L5 A/B + Gov (amber)
+  </div>
+  <div class="legend-item">
+    <div class="legend-box" style="background:var(--l6-bg);border-color:var(--l6);"></div>
+    L6 Execution (cyan)
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background:var(--obs);opacity:0.6;"></div>
+    Observability (cross-cutting)
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background:var(--mlops);opacity:0.6;"></div>
+    MLOps (cross-cutting)
+  </div>
+  <div class="legend-item" style="color:var(--l4);">
+    ⚠ red left border = can degrade gracefully
+  </div>
+</div>
+
+<div class="footer">
+  <span>Banking Agentic AI Platform · Reference Architecture v1.0 · Author: Sarala Biswal</span>
+  <span>github.com/saralabiswal · linkedin.com/in/saralabiswal</span>
+</div>
+
+</body>
+</html>
