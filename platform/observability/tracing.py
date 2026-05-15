@@ -44,7 +44,7 @@ def configure_tracing(settings: Settings) -> None:
     provider = TracerProvider(
         resource=Resource.create(
             {
-                "service.name": "banking-agentic-platform",
+                "service.name": "banking-agentic-ai-platform",
                 "deployment.environment": settings.ENVIRONMENT,
             }
         )

@@ -2,7 +2,7 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    monitor: 'banking-agentic-platform'
+    monitor: 'banking-agentic-ai-platform'
 
 scrape_configs:
   - job_name: 'platform-api'

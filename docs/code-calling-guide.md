@@ -22,22 +22,22 @@ sequenceDiagram
     participant Audit as AuditWriter
     participant Events as PipelineEventBus
 
-    UI->>API: POST /pipeline/run
-    API->>Runner: run(blueprint, customer_id, trigger, caller_id)
-    Runner->>Events: layer_started L1
-    Runner->>L1: assemble(customer_id, session_id, scenario)
-    L1->>Audit: CONTEXT_ASSEMBLY
-    Runner->>Events: layer_completed L1
-    Runner->>L2: retrieve(session_id, scenario)
-    L2->>Audit: VECTOR_RETRIEVAL
-    Runner->>L3: run_pipeline(session_id, scenario, chunks, trace_id)
-    L3->>Audit: ORCHESTRATION_COMPLETE
-    Runner->>L4: evaluate(orchestrator_output, session_id)
-    L4->>Audit: GUARDRAILS_EVALUATION
-    Runner->>L5: select_variant(customer_id, scenario, action_type)
-    Runner->>L6: send(approved_action)
-    L6->>Audit: ACTION_EXECUTED
-    Runner->>Events: pipeline_done
+    UI->>API: 01 POST /pipeline/run
+    API->>Runner: 02 run(blueprint, customer_id, trigger, caller_id)
+    Runner->>Events: 03 publish layer_started L1
+    Runner->>L1: 04 assemble(customer_id, session_id, scenario)
+    L1->>Audit: 05 write CONTEXT_ASSEMBLY
+    Runner->>Events: 06 publish layer_completed L1
+    Runner->>L2: 07 retrieve(session_id, scenario)
+    L2->>Audit: 08 write VECTOR_RETRIEVAL
+    Runner->>L3: 09 run_pipeline(session_id, scenario, chunks, trace_id)
+    L3->>Audit: 10 write ORCHESTRATION_COMPLETE
+    Runner->>L4: 11 evaluate(orchestrator_output, session_id)
+    L4->>Audit: 12 write GUARDRAILS_EVALUATION
+    Runner->>L5: 13 select_variant(customer_id, scenario, action_type)
+    Runner->>L6: 14 send(approved_action)
+    L6->>Audit: 15 write ACTION_EXECUTED
+    Runner->>Events: 16 publish pipeline_done
 ```
 
 ## API Entrypoints

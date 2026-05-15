@@ -129,7 +129,7 @@
   "refresh": "10s",
   "schemaVersion": 39,
   "tags": [
-    "banking-agentic-platform"
+    "banking-agentic-ai-platform"
   ],
   "templating": {
     "list": []
@@ -141,7 +141,7 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "Banking Agentic Platform",
-  "uid": "banking-agentic-platform",
+  "uid": "banking-agentic-ai-platform",
   "version": 1,
   "weekStart": ""
 }

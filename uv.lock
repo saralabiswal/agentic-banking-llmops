@@ -247,7 +247,7 @@ wheels = [
 ]
 
 [[package]]
-name = "banking-agentic-platform"
+name = "banking-agentic-ai-platform"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

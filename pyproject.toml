@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "banking-agentic-platform"
+name = "banking-agentic-ai-platform"
 version = "0.1.0"
 description = "Production-grade Agentic AI Platform for banking — 6 layers, cloud-agnostic, fully open source"
 readme = "README.md"

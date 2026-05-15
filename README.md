@@ -330,7 +330,7 @@ No API key required. Runs entirely locally.
 
 ```bash
 git clone <repository-url>
-cd banking-agentic-platform
+cd banking-agentic-ai-platform
 
 make install        # uv sync + pnpm install in ui/
 make docker-up      # starts all 7 local services
@@ -455,7 +455,7 @@ server process — no restart, no `.env` file writes, no API keys stored in the 
 ## Project Structure
 
 ```
-banking-agentic-platform/
+banking-agentic-ai-platform/
 │
 ├── platform/                    # Python backend
 │   ├── core/                    # Shared schemas, interfaces, exceptions, config
