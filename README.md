@@ -330,7 +330,7 @@ No API key required. Runs entirely locally.
 
 ```bash
 git clone <repository-url>
-cd banking-agentic-ai-platform
+cd agentic-banking-llmops
 
 make install        # uv sync + pnpm install in ui/
 make docker-up      # starts all 7 local services
