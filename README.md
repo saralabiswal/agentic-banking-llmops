@@ -232,6 +232,7 @@ Four explicit boundaries define where one concern ends and another begins. Each 
 | Boundary | Responsibility | Architectural Rationale |
 |----------|----------------|------------------------|
 | **L1 context boundary** | Source adapters normalize all upstream data into one `CustomerProfile`, including memory retrieval and ML scoring overlays | Agents never depend on upstream system schemas. A CRM schema change requires updating one adapter — not every agent prompt that ever referenced a CRM field |
+| **L2 knowledge retrieval boundary** | L2 retrieves, reranks, and delivers typed policy chunks to L3 — agents never query the knowledge base directly | Prevents agents from self-selecting policy justifications that confirm their existing reasoning. Isolates KB schema changes from agent prompts. Enables independent KB version tracking in the audit trail — regulatory replay can reconstruct the exact policy context that governed any historical decision |
 | **L3 / L4 governance boundary** | Agents propose actions; guardrails authorize or block them | Prevents LLM output from becoming the control plane. An agent that also enforces its own constraints is safe only when the model is well-behaved. These trust models must be separate |
 | **L5 / L6 execution boundary** | Experiment variants are assigned and tagged before delivery | Keeps measurement and execution coupled — the same record knows what was sent and what experiment it belonged to — while keeping them independently auditable |
 | **Audit / observability boundary** | Audit proves decisions happened as recorded; metrics and traces operate the system | Separates the regulatory chain of custody (permanent, append-only, forensic) from the engineering telemetry (bounded retention, operational). Conflating them contaminates both |
@@ -366,7 +367,7 @@ ollama pull llama3.2
 
 ```bash
 git clone <repository-url>
-cd agentic-banking-llmops
+cd banking-agentic-ai-platform
 
 make install        # uv sync + pnpm install in ui/
 make docker-up      # starts all 8 local services
