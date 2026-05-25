@@ -367,7 +367,7 @@ ollama pull llama3.2
 
 ```bash
 git clone <repository-url>
-cd banking-agentic-ai-platform
+cd agentic-banking-llmops
 
 make install        # uv sync + pnpm install in ui/
 make docker-up      # starts all 8 local services
