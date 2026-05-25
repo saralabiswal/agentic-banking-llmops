@@ -340,6 +340,7 @@ routers, and Prometheus metrics.
 - `platform.api.routers.config`
 - `platform.api.routers.outcomes`
 - `platform.api.routers.audit`
+- `platform.api.routers.evaluation`
 - `platform.api.routers.experiments`
 - `platform.api.routers.guardrails`
 - `platform.api.routers.models`
@@ -423,6 +424,30 @@ the generated `trace_id`, `session_id`, and starting status.
 enrollments, opt-outs, or complaints.
 
 **Calls:** `OutcomeRouter.route(outcome)`
+
+### Evaluation API
+
+**File:** `platform/api/routers/evaluation.py`
+
+**Routes:**
+- `GET /evaluation/options`
+- `POST /evaluation/run`
+- `GET /evaluation/history`
+- `GET /evaluation/judge-results`
+
+**Purpose:** Runs and persists offline model evaluation before model promotion.
+The current selectable evaluation candidates are:
+
+| Model label | Model name |
+| --- | --- |
+| Payment Risk Model | `payment_risk_model` |
+| Churn Propensity Model | `churn_propensity_model` |
+
+`GET /evaluation/options` discovers versions from durable evaluation history,
+MLflow model versions, and fallback version `1`. `POST /evaluation/run` calls
+`EvaluationPipeline.run(...)`, which loads the local model artifact, executes
+benchmark, fairness, and regression gates, tags MLflow best-effort, and stores
+the report in PostgreSQL.
 
 ## SDK Entrypoints
 
@@ -529,6 +554,8 @@ behavioral, and feature-store sources.
 **Calls:**
 - `_fetch_with_timeout(adapter, customer_id, trace_id)`
 - `pull_signals(customer_id, feature_store)`
+- `MLScoringService.score(profile)` when the artifact-backed scorer is enabled
+- `MemoryStore.retrieve(customer_id, scenario)` for long-term customer memory
 - `normalize_customer_profile(...)`
 - `ContextStore.set("session:{session_id}:customer_profile", ...)`
 - `AuditWriter.write(CONTEXT_ASSEMBLY)`
@@ -538,6 +565,10 @@ behavioral, and feature-store sources.
 **Important behavior:**
 - Source adapters run concurrently.
 - Adapter failures degrade the profile instead of failing the pipeline.
+- ML scoring overlays fixture signals when artifacts are available and falls
+  back to feature-store signals when scoring fails.
+- Long-term memory is attached to the profile when Qdrant memory retrieval is
+  available; memory degradation is recorded in the assembly metadata.
 - The customer profile is stored with a TTL and later read by Layers 2-4.
 
 ### Layer 2: `VectorSearchService`
@@ -590,6 +621,7 @@ only; they do not execute them.
 - `_load_customer_profile(session_id)`
 - `get_pipeline(scenario)`
 - `_run_agent_step(...)`
+- `RoutedLLMInferenceService.complete(...)` inside each agent
 - `_handle_branch(...)`
 - `PipelineStateManager.checkpoint(...)`
 - `_write_audit(result)`
@@ -601,6 +633,18 @@ only; they do not execute them.
   errors route to `_route_failure(...)`.
 - Failure routing creates a `HumanReviewItem` and returns an output with
   `status="HUMAN_REVIEW"`.
+
+**LLM routing behavior:**
+- Agents call the routed LLM inference service instead of calling providers
+  directly.
+- Runtime config selects `mock`, `ollama`, or `api` as the primary backend.
+- Mock stays fast for deterministic tests; Ollama and API routes get larger
+  task-specific latency budgets.
+- Provider failures, schema failures, and timeouts fall back to the mock-safe
+  backend and expose metadata such as primary backend/model, served
+  backend/model, fallback reason, latency, and token estimates.
+- Ollama requests send the Pydantic JSON Schema as the structured output
+  contract so local models can return schema-valid JSON.
 
 ### Layer 4: `GuardrailsService`
 
@@ -674,6 +718,7 @@ capture, and audit.
 - `OutcomeProcessor.record_outcome(outcome)`
 - `model_governance_events.append(outcome)`
 - `AuditWriter.write(OUTCOME_CAPTURED)`
+- `MemoryWriter.write_from_outcome(outcome)` for durable customer memory
 
 ## Infrastructure Factories
 
@@ -688,8 +733,34 @@ These functions centralize infrastructure selection:
 | `create_audit_writer()` | `AuditWriter` | PostgreSQL audit writer |
 | `create_queue_store()` | `QueueStore` | PostgreSQL approval queue store |
 | `create_vector_store()` | `VectorStore` | Qdrant vector store |
+| `create_memory_store()` | `MemoryStore` | Qdrant customer-memory store |
+| `create_ml_scoring_service()` | `MLScoringService` | Local pickle artifact-backed scorer |
 | `create_llm_client()` | `LLMClient` | Mock, Ollama, or LiteLLM based on runtime config |
+| `create_llm_inference_service()` | `LLMInferenceService` | Routed LLM inference with timeout, fallback, and metadata |
 | `create_channel_adapter(channel_type)` | `ChannelAdapter` | Mock SMS, push, or CRM adapter |
+
+## PostgreSQL Tables
+
+The application schema is defined by `alembic/versions/001_initial_schema.py`
+and `alembic/versions/002_evaluation_history.py`. A migrated local database has
+nine application tables plus Alembic metadata:
+
+| Table | Purpose |
+| --- | --- |
+| `feature_store` | Customer feature and ML signal values used by Layer 1 context assembly. |
+| `audit_log` | Immutable audit records emitted by the six-layer runtime. |
+| `approval_queue` | Human-review items for flagged or approval-required actions. |
+| `experiments` | A/B experiment definitions keyed by scenario and action type. |
+| `experiment_variants` | Variant definitions and payload rewrites for each experiment. |
+| `experiment_results` | Sample, conversion, confidence, and winner-tracking state. |
+| `outcome_events` | Captured customer outcomes linked to traces, experiments, and variants. |
+| `evaluation_reports` | Durable offline evaluation reports for candidate model versions. |
+| `evaluation_judge_results` | Stored LLM judge scores, reasoning, flags, and raw payload. |
+| `alembic_version` | Alembic migration bookkeeping table. |
+
+Local seeding is handled by `platform/db_seed.py`. It upserts feature-store
+fixtures and experiment metadata into `feature_store`, `experiments`,
+`experiment_variants`, and `experiment_results`.
 
 ## Core Data Contracts
 

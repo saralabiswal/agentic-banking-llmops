@@ -11,9 +11,9 @@ import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from platform.adapters.adapter_factory import create_llm_client
+from platform.adapters.adapter_factory import create_llm_inference_service
 from platform.adapters.mock_channel_adapter import MockCRMAdapter, MockPushAdapter, MockSMSAdapter
-from platform.core.interfaces import AuditWriter, ChannelAdapter, ContextStore
+from platform.core.interfaces import AuditWriter, ChannelAdapter, ContextStore, MemoryStore
 from platform.core.schemas import (
     AssemblyResult,
     AuditRecord,
@@ -24,7 +24,7 @@ from platform.core.schemas import (
     ProposedAction,
     RetrievalResult,
 )
-from platform.layer1_context.service import ContextAssemblyService
+from platform.layer1_context.service import ContextAssemblyService, MLScorer
 from platform.layer2_vector.kb_loader import KnowledgeBaseLoader
 from platform.layer2_vector.service import VectorSearchService
 from platform.layer3_orchestration.orchestrator import Orchestrator
@@ -132,6 +132,8 @@ class BlueprintRunner:
         event_bus: PipelineEventBus | None = None,
         experiment_service: ExperimentService | None = None,
         approval_queue: ApprovalQueueService | None = None,
+        memory_store: MemoryStore | None = None,
+        ml_scoring_service: MLScorer | None = None,
     ) -> None:
         """Create a blueprint runner with in-memory defaults."""
         self.context_store = context_store or InMemoryContextStore()
@@ -139,6 +141,8 @@ class BlueprintRunner:
         self.event_bus = event_bus or PipelineEventBus()
         self.experiment_service = experiment_service or ExperimentService()
         self.approval_queue = approval_queue or ApprovalQueueService()
+        self.memory_store = memory_store
+        self.ml_scoring_service = ml_scoring_service
         self.status_by_trace: dict[str, dict[str, Any]] = {}
 
     @traced(layer="L6", operation="blueprint_run")
@@ -178,6 +182,8 @@ class BlueprintRunner:
                 context_store=self.context_store,
                 audit_writer=self.audit_writer,
                 feature_store=None,
+                memory_store=self.memory_store,
+                ml_scoring_service=self.ml_scoring_service,
             ).assemble(customer_id, session_id, blueprint.scenario),
         )
         # L2 retrieves policy evidence before any agent proposes an action.
@@ -196,7 +202,7 @@ class BlueprintRunner:
             "L3",
             lambda: Orchestrator(
                 context_store=self.context_store,
-                llm_client=create_llm_client(),
+                llm_inference_service=create_llm_inference_service(),
                 audit_writer=self.audit_writer,
             ).run_pipeline(session_id, blueprint.scenario, retrieval.chunks, trace_id),
         )
@@ -307,6 +313,7 @@ class BlueprintRunner:
         scenario: str,
         actions: list[ProposedAction],
     ) -> list[ProposedAction]:
+        """Attach experiment variants to approved actions and audit the assignment result."""
         selected: list[ProposedAction] = []
         assignments: list[dict[str, str | None]] = []
         for action in actions:
@@ -316,11 +323,13 @@ class BlueprintRunner:
                     scenario,
                     action.action_type,
                 )
+                # Variant metadata travels with the action, execution, and outcome records.
                 metadata = {
                     **action.metadata,
                     "trace_id": trace_id,
                     "session_id": session_id,
                     "customer_id": customer_id,
+                    "scenario": scenario,
                     "experiment_id": variant.experiment_id,
                     "variant_id": variant.variant_id,
                 }
@@ -344,6 +353,7 @@ class BlueprintRunner:
                     }
                 )
             except KeyError:
+                # Missing experiments are non-fatal; the approved action still executes unchanged.
                 selected.append(
                     action.model_copy(
                         update={
@@ -352,6 +362,7 @@ class BlueprintRunner:
                                 "trace_id": trace_id,
                                 "session_id": session_id,
                                 "customer_id": customer_id,
+                                "scenario": scenario,
                             }
                         }
                     )
@@ -395,6 +406,7 @@ class BlueprintRunner:
         caller_id: str,
         actions: list[ProposedAction],
     ) -> ExecutionResult:
+        """Execute the first approved action or record the no-action path for replay."""
         if not actions:
             timestamp = datetime.now(UTC)
             if self.audit_writer is not None:
@@ -427,6 +439,7 @@ class BlueprintRunner:
                 pending_actions=[],
             )
 
+        # The reference runner executes one approved action per run; other actions remain auditable.
         action = actions[0].model_copy(
             update={"metadata": {**actions[0].metadata, "caller_id": caller_id}}
         )
@@ -466,6 +479,7 @@ class BlueprintRunner:
 
 
 def _adapter_for_action(action: ProposedAction) -> ChannelAdapter:
+    """Choose the local mock delivery adapter that matches the proposed action."""
     if action.channel == Channel.SMS:
         return MockSMSAdapter()
     if action.channel == Channel.CRM or action.action_type.startswith("CREATE_"):
@@ -474,6 +488,7 @@ def _adapter_for_action(action: ProposedAction) -> ChannelAdapter:
 
 
 def _summary_for_output(output: Any) -> dict[str, Any]:
+    """Convert layer outputs into compact JSON-safe summaries for SSE/UI consumers."""
     if hasattr(output, "model_dump"):
         dumped = output.model_dump(mode="json")
         return json.loads(json.dumps(dumped, default=str)) if isinstance(dumped, dict) else {}

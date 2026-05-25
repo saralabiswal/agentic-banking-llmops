@@ -22,8 +22,11 @@ async def pipeline_events(
     runner: BlueprintRunner = Depends(get_runner),
 ) -> StreamingResponse:
     """Stream retained and live pipeline events for a trace ID."""
+
     async def event_stream() -> AsyncIterator[str]:
+        """Serialize retained and future runner events into the SSE wire format."""
         async for event in runner.event_bus.stream(trace_id):
+            # The UI expects each event payload to carry the trace ID for stateless parsing.
             yield (
                 f"event: {event.event_type}\n"
                 f"data: {json.dumps({'trace_id': trace_id, **event.payload}, default=str)}\n\n"

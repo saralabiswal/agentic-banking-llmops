@@ -15,6 +15,7 @@ from platform.core.schemas import (
     BehavioralProfile,
     CardProfile,
     Channel,
+    CheckResult,
     CustomerProfile,
     ModelSignals,
     OrchestratorOutput,
@@ -24,7 +25,12 @@ from platform.core.schemas import (
     Segment,
 )
 from platform.layer4_guardrails.approval_queue import ApprovalQueueService
-from platform.layer4_guardrails.checks.responsible_ai import ConfidenceCheck
+from platform.layer4_guardrails.checks.responsible_ai import (
+    AnomalyCheck,
+    ConfidenceCheck,
+    ConsistencyCheck,
+    PartialContextCheck,
+)
 from platform.layer4_guardrails.fairness import BisgFairnessChecker
 from platform.layer4_guardrails.rule_engine import RuleEvaluator, RuleLoader
 from platform.layer4_guardrails.service import GuardrailsService
@@ -178,6 +184,82 @@ def test_confidence_check_flags_low_hardship_confidence():
 
     assert result.status == "FLAGGED"
     assert result.rule_id == "AI-001"
+
+
+async def test_approval_queue_records_decisions_and_derives_priorities():
+    """Approval queue should order pending items and update decisions in memory."""
+    queue = ApprovalQueueService()
+    action = ProposedAction(
+        action_id="ACT-REVIEW",
+        action_type="CREATE_HARDSHIP_ENROLLMENT_CASE",
+        requires_approval=True,
+    )
+    urgent = CheckResult(
+        status="FLAGGED",
+        rule_id="R-REVIEW",
+        category="REGULATORY",
+        severity="LOW",
+        message="regulatory review",
+        details={},
+    )
+    high = CheckResult(
+        status="FLAGGED",
+        rule_id="B-HIGH",
+        category="BUSINESS_POLICY",
+        severity="HIGH",
+        message="high review",
+        details={},
+    )
+
+    urgent_item = await queue.enqueue(action, [urgent], {"trace_id": "trace_queue"})
+    high_item = await queue.enqueue(action, [high], {"trace_id": "trace_queue"})
+    low_item = await queue.enqueue(action, [], {"trace_id": "trace_queue"})
+    pending = await queue.get_pending()
+
+    assert [item.priority for item in pending] == ["URGENT", "HIGH", "LOW"]
+    await queue.record_decision(high_item.queue_id, "REJECTED", "missing context")
+    pending_after = await queue.get_pending()
+    assert high_item.queue_id not in {item.queue_id for item in pending_after}
+    assert urgent_item.sla_deadline < low_item.sla_deadline
+
+
+def test_responsible_ai_checks_cover_approved_and_flagged_paths():
+    """Responsible AI checks should flag partial context, weak support, and anomalies."""
+    profile = _c002_profile()
+    action = ProposedAction(
+        action_id="ACT-ACCOUNT",
+        action_type="CREATE_HARDSHIP_ENROLLMENT_CASE",
+        requires_approval=True,
+    )
+    weak_risk = RiskAssessment(
+        risk_level="CRITICAL",
+        risk_score=0.91,
+        confidence=0.95,
+        lower_confidence_reason=None,
+        primary_signals=[],
+        protective_signals=[],
+        policy_match=PolicyMatch(
+            hardship_eligible=False,
+            reason="insufficient support",
+            policy_ref="KB-HARD-001-v2.3",
+        ),
+        recommended_next="human_review",
+    )
+    weak_profile = profile.model_copy(
+        update={
+            "card": profile.card.model_copy(update={"missed_pmts": 0, "utilization": 0.2}),
+            "banking": profile.banking.model_copy(update={"checking_balance": Decimal("1200")}),
+            "signals": profile.signals.model_copy(
+                update={"risk_score": 0.2, "payment_propensity": 0.9}
+            ),
+        }
+    )
+
+    assert ConfidenceCheck().check(action, 0.82, partial_context=True).status == "APPROVED"
+    assert PartialContextCheck().check(action, profile).status == "FLAGGED"
+    assert ConsistencyCheck().check(weak_risk, weak_profile).status == "FLAGGED"
+    assert AnomalyCheck().check("SEND_SMS", ["SEND_SMS"] * 20).status == "FLAGGED"
+    assert AnomalyCheck().check("SEND_SMS", []).status == "APPROVED"
 
 
 async def _store_profile(context_store, session_id, profile):

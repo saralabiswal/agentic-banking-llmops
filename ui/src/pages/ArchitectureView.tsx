@@ -90,7 +90,7 @@ export default function ArchitectureView(): JSX.Element {
   const setSelectedLayer = usePipelineStore((store) => store.setSelectedLayer);
   const appendEventLog = usePipelineStore((store) => store.appendEventLog);
   const eventLog = usePipelineStore((store) => store.eventLog);
-  const [mode, setMode] = useState<PlaybackMode>("step");
+  const [mode, setMode] = useState<PlaybackMode>("auto");
   const [currentStep, setCurrentStep] = useState(0);
   const [autoPlaying, setAutoPlaying] = useState(true);
   const [playback, setPlayback] = useState<Record<string, LayerPlayback>>({});

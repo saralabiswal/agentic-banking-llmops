@@ -8,6 +8,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from platform.memory.schemas import CustomerMemory
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -116,6 +117,7 @@ class CustomerProfile(FrozenModel):
     assembly_latency_ms: int = Field(ge=0)
     sources_available: list[str]
     sources_degraded: list[str] = Field(default_factory=list)
+    long_term_memory: list[CustomerMemory] = Field(default_factory=list)
     partial_context: bool = False
 
 
@@ -126,7 +128,9 @@ class AssemblyResult(FrozenModel):
     session_id: str
     customer_id: str
     partial_context: bool
+    sources_available: list[str] = Field(default_factory=list)
     sources_degraded: list[str] = Field(default_factory=list)
+    model_versions_used: dict[str, str] = Field(default_factory=dict)
     ttl_expires_at: datetime
     assembly_ms: int = Field(ge=0)
 
@@ -371,6 +375,8 @@ class AuditRecord(FrozenModel):
         "AB_ASSIGNMENT",
         "ACTION_EXECUTED",
         "OUTCOME_CAPTURED",
+        "MEMORY_RETRIEVED",
+        "MEMORY_STORED",
     ]
     trace_id: str
     session_id: str

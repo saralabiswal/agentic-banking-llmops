@@ -8,6 +8,7 @@ from __future__ import annotations
 from platform.api.routers import (
     audit,
     config,
+    evaluation,
     experiments,
     guardrails,
     models,
@@ -38,6 +39,7 @@ app.include_router(sse.router)
 app.include_router(config.router)
 app.include_router(outcomes.router)
 app.include_router(audit.router)
+app.include_router(evaluation.router)
 app.include_router(experiments.router)
 app.include_router(guardrails.router)
 app.include_router(models.router)

@@ -54,11 +54,13 @@ def metered(layer: str) -> Callable[[F], F]:
     """Decorate a service method and record latency/status to Prometheus."""
 
     def decorator(func: F) -> F:
+        """Wrap sync and async functions while preserving their original signature metadata."""
         if inspect.iscoroutinefunction(func):
             async_func = cast("Callable[..., Awaitable[object]]", func)
 
             @functools.wraps(func)
             async def async_wrapper(*args: object, **kwargs: object) -> object:
+                """Record async method duration and mark the metric status on exceptions."""
                 started = time.perf_counter()
                 context = extract_observability_context(func, args, kwargs)
                 status = "success"
@@ -76,6 +78,7 @@ def metered(layer: str) -> Callable[[F], F]:
 
         @functools.wraps(func)
         def sync_wrapper(*args: object, **kwargs: object) -> object:
+            """Record sync method duration and mark the metric status on exceptions."""
             started = time.perf_counter()
             context = extract_observability_context(func, args, kwargs)
             status = "success"

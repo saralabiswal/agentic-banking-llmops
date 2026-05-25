@@ -10,6 +10,7 @@ import json
 from datetime import UTC, datetime
 from decimal import Decimal
 from platform.adapters.mock_llm_client import MockLLMClient
+from platform.core.config import Settings
 from platform.core.exceptions import ToolAuthorizationError
 from platform.core.schemas import (
     BankingProfile,
@@ -158,6 +159,43 @@ async def test_agent_timeout_routes_to_human_review_queue(monkeypatch):
     assert result.status == "HUMAN_REVIEW"
     assert review_queue.items[-1].failure_type == "TIMEOUT"
     assert review_queue.items[-1].step_name == "RiskScoringAgent"
+
+
+async def test_real_llm_backend_expands_agent_timeout(monkeypatch):
+    context_store = MemoryContextStore()
+    review_queue = HumanReviewQueue()
+    session_id = "sess_C002_layer3_real_llm_timeout"
+    await _store_profile(context_store, session_id, _c002_profile())
+    monkeypatch.setitem(
+        PIPELINES,
+        "payment_risk_intervention",
+        Pipeline(
+            scenario="payment_risk_intervention",
+            steps=(
+                PipelineStep(
+                    agent="RiskScoringAgent",
+                    timeout_ms=1,
+                    output_schema=BaseModel,
+                ),
+            ),
+        ),
+    )
+
+    result = await Orchestrator(
+        context_store=context_store,
+        llm_client=SlowLLM(),
+        human_review_queue=review_queue,
+        config=Settings(LLM_BACKEND="ollama", LLM_MODEL="llama3.2"),
+    ).run_pipeline(
+        session_id=session_id,
+        scenario="payment_risk_intervention",
+        policy_chunks=_policy_chunks(),
+        trace_id="trace_layer3_real_llm_timeout",
+    )
+
+    assert result.status == "PENDING_GUARDRAILS"
+    assert review_queue.items == []
+    assert result.agent_outputs[0].output["_inference"]["primary_backend"] == "ollama"
 
 
 async def test_schema_validation_failure_routes_to_human_review_queue():

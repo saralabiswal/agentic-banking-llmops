@@ -65,6 +65,7 @@ def traced(layer: str, operation: str) -> Callable[[F], F]:
     """
 
     def decorator(func: F) -> F:
+        """Create a tracing wrapper for sync or async service methods."""
         tracer = trace.get_tracer(func.__module__)
 
         if inspect.iscoroutinefunction(func):
@@ -72,6 +73,7 @@ def traced(layer: str, operation: str) -> Callable[[F], F]:
 
             @functools.wraps(func)
             async def async_wrapper(*args: object, **kwargs: object) -> object:
+                """Bind log context, start a span, and record async exceptions."""
                 context = extract_observability_context(func, args, kwargs)
                 tokens = _bind_log_context(layer, operation, context)
                 try:
@@ -92,6 +94,7 @@ def traced(layer: str, operation: str) -> Callable[[F], F]:
 
         @functools.wraps(func)
         def sync_wrapper(*args: object, **kwargs: object) -> object:
+            """Bind log context, start a span, and record sync exceptions."""
             context = extract_observability_context(func, args, kwargs)
             tokens = _bind_log_context(layer, operation, context)
             try:
@@ -154,6 +157,7 @@ def _bind_log_context(
     operation: str,
     context: ObservabilityContext,
 ) -> Mapping[str, Token[Any]]:
+    """Bind trace metadata to structlog contextvars for the duration of one call."""
     return structlog.contextvars.bind_contextvars(
         trace_id=context.trace_id,
         layer=layer,

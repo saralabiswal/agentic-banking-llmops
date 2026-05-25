@@ -13,6 +13,8 @@ from platform.core.schemas import (
     PolicyChunk,
     ProposedAction,
 )
+from platform.llm_inference.schemas import InferenceResult, TaskType
+from platform.memory.schemas import CustomerMemory, MemoryType
 from typing import Any, Protocol
 
 from pydantic import BaseModel
@@ -51,6 +53,28 @@ class AuditWriter(Protocol):
 
     async def write(self, record: AuditRecord) -> None:
         """Persist an immutable audit record."""
+        ...
+
+
+class MemoryStore(Protocol):
+    """Long-term cross-session customer memory store."""
+
+    async def store(self, memory: CustomerMemory) -> str:
+        """Store a customer memory and return its identifier."""
+        ...
+
+    async def retrieve(
+        self,
+        customer_id: str,
+        scenario: str,
+        top_k: int = 5,
+        memory_types: list[MemoryType] | None = None,
+    ) -> list[CustomerMemory]:
+        """Retrieve relevant memories for a customer and scenario."""
+        ...
+
+    async def get_recent(self, customer_id: str, limit: int = 10) -> list[CustomerMemory]:
+        """Return recent memories for a customer."""
         ...
 
 
@@ -93,6 +117,22 @@ class LLMClient(Protocol):
 
     async def complete(self, system: str, user: str, schema: type[BaseModel]) -> dict[str, Any]:
         """Return a JSON-compatible response that validates against schema."""
+        ...
+
+
+class LLMInferenceService(Protocol):
+    """Routed LLM inference service interface."""
+
+    async def complete(
+        self,
+        messages: list[dict[str, str]],
+        task_type: TaskType,
+        trace_id: str,
+        max_tokens: int = 1024,
+        temperature: float = 0.1,
+        schema: type[BaseModel] | None = None,
+    ) -> InferenceResult:
+        """Return a routed inference result."""
         ...
 
 

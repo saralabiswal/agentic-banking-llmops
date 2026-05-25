@@ -1,3 +1,7 @@
+/*
+ * Global Tailwind entrypoint and document reset.
+ * Author: Sarala Biswal
+ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

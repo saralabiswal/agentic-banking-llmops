@@ -70,7 +70,9 @@ export interface AssemblyResult {
   sessionId: string;
   customerId: string;
   partialContext: boolean;
+  sourcesAvailable: string[];
   sourcesDegraded: string[];
+  modelVersionsUsed: Record<string, string>;
   ttlExpiresAt: string;
   assemblyMs: number;
 }
@@ -272,10 +274,12 @@ export interface AuditRecord {
   eventType:
     | "CONTEXT_ASSEMBLY"
     | "VECTOR_RETRIEVAL"
+    | "MEMORY_RETRIEVED"
     | "ORCHESTRATION_COMPLETE"
     | "GUARDRAILS_EVALUATION"
     | "AB_ASSIGNMENT"
     | "ACTION_EXECUTED"
+    | "MEMORY_STORED"
     | "OUTCOME_CAPTURED";
   traceId: string;
   sessionId: string;
@@ -393,6 +397,42 @@ export interface PsiPoint {
 export interface EvaluationGate {
   name: string;
   status: "PASS" | "FAIL" | "MONITOR";
+}
+
+export interface OfflineGateResult {
+  gate: string;
+  passed: boolean;
+  metrics: Record<string, number>;
+  failureReason: string | null;
+}
+
+export interface EvaluationReport {
+  modelName: string;
+  candidateVersion: string;
+  championVersion: string | null;
+  gates: OfflineGateResult[];
+  overallPassed: boolean;
+  promotionAllowed: boolean;
+  evaluatedAt: string;
+  traceId: string;
+}
+
+export interface EvaluationRunRequest {
+  modelName: string;
+  candidateVersion: string;
+}
+
+export interface EvaluationModelOption {
+  modelName: string;
+  label: string;
+  versions: string[];
+  defaultVersion: string;
+}
+
+export interface EvaluationOptions {
+  models: EvaluationModelOption[];
+  storageOk: boolean;
+  storageError: string | null;
 }
 
 export type LayerStatus = "idle" | "active" | "complete" | "error";

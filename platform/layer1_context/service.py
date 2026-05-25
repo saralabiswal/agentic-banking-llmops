@@ -12,14 +12,16 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from platform.core.config import Settings, settings
 from platform.core.exceptions import SourceUnavailableError
-from platform.core.interfaces import AuditWriter, ContextStore, FeatureStore
-from platform.core.schemas import AssemblyResult, AuditRecord
+from platform.core.interfaces import AuditWriter, ContextStore, FeatureStore, MemoryStore
+from platform.core.schemas import AssemblyResult, AuditRecord, CustomerProfile
 from platform.layer1_context.adapters.banking_adapter import CoreBankingAdapter
 from platform.layer1_context.adapters.behavioral_adapter import BehavioralSignalsAdapter
 from platform.layer1_context.adapters.card_adapter import CardSystemAdapter
 from platform.layer1_context.adapters.crm_adapter import CRMAdapter
 from platform.layer1_context.feature_store import pull_signals
 from platform.layer1_context.normalizer import normalize_customer_profile
+from platform.memory.schemas import CustomerMemory
+from platform.ml.schemas import ModelScore
 from platform.observability.metrics import metered, record_adapter_latency
 from platform.observability.tracing import traced
 from typing import Any, Protocol
@@ -38,6 +40,14 @@ class SourceAdapter(Protocol):
 
     async def fetch(self, customer_id: str) -> dict[str, Any]:
         """Fetch raw source data for a customer."""
+        ...
+
+
+class MLScorer(Protocol):
+    """Protocol for Layer 1 classical ML scoring."""
+
+    async def score(self, profile: CustomerProfile, trace_id: str) -> ModelScore:
+        """Score a normalized customer profile."""
         ...
 
 
@@ -66,6 +76,8 @@ class ContextAssemblyService:
         context_store: ContextStore,
         audit_writer: AuditWriter | None = None,
         feature_store: FeatureStore | None = None,
+        memory_store: MemoryStore | None = None,
+        ml_scoring_service: MLScorer | None = None,
         source_adapters: list[SourceAdapter] | None = None,
         config: Settings = settings,
     ) -> None:
@@ -73,6 +85,8 @@ class ContextAssemblyService:
         self._context_store = context_store
         self._audit_writer = audit_writer
         self._feature_store = feature_store
+        self._memory_store = memory_store
+        self._ml_scoring_service = ml_scoring_service
         self._config = config
         self._source_adapters = source_adapters or [
             CardSystemAdapter(),
@@ -116,6 +130,39 @@ class ContextAssemblyService:
             sources_available=sources_available,
             sources_degraded=sources_degraded,
         )
+        if self._ml_scoring_service is not None:
+            profile, ml_degraded = await self._score_profile(profile, trace_id)
+            if ml_degraded:
+                sources_degraded.append("ml_scoring")
+            else:
+                sources_available.append("ml_scoring")
+            profile = profile.model_copy(
+                update={
+                    "sources_available": sources_available,
+                    "sources_degraded": sources_degraded,
+                    "partial_context": bool(sources_degraded),
+                }
+            )
+        if self._memory_store is not None:
+            memories, memory_degraded = await self._retrieve_memory(
+                customer_id=customer_id,
+                session_id=session_id,
+                scenario=scenario,
+                trace_id=trace_id,
+                assembled_at=assembled_at,
+            )
+            if memory_degraded:
+                sources_degraded.append("memory")
+            else:
+                sources_available.append("memory")
+            profile = profile.model_copy(
+                update={
+                    "long_term_memory": memories,
+                    "sources_available": sources_available,
+                    "sources_degraded": sources_degraded,
+                    "partial_context": bool(sources_degraded),
+                }
+            )
         profile_json = profile.model_dump_json()
         context_key = f"session:{session_id}:customer_profile"
         # The profile is session-scoped; downstream layers read it by this stable context key.
@@ -152,7 +199,7 @@ class ContextAssemblyService:
                         },
                         "assembly_latency_ms": assembly_ms,
                         "profile_hash": f"sha256:{profile_hash}",
-                        "model_versions_used": signals.model_versions,
+                        "model_versions_used": profile.signals.model_versions,
                         "partial_context": profile.partial_context,
                         "ttl_expires_at": ttl_expires_at.isoformat(),
                     },
@@ -174,9 +221,132 @@ class ContextAssemblyService:
             session_id=session_id,
             customer_id=customer_id,
             partial_context=profile.partial_context,
+            sources_available=profile.sources_available,
             sources_degraded=sources_degraded,
+            model_versions_used=profile.signals.model_versions,
             ttl_expires_at=ttl_expires_at,
             assembly_ms=assembly_ms,
+        )
+
+    async def _score_profile(
+        self,
+        profile: CustomerProfile,
+        trace_id: str,
+    ) -> tuple[CustomerProfile, bool]:
+        """Apply classical ML scores, falling back to feature-store signals on failure."""
+        assert self._ml_scoring_service is not None
+        try:
+            model_score = await self._ml_scoring_service.score(profile, trace_id)
+            updated_versions = {
+                **profile.signals.model_versions,
+                **model_score.model_versions,
+            }
+            updated_signals = profile.signals.model_copy(
+                update={
+                    "risk_score": model_score.risk_score,
+                    "churn_probability": model_score.churn_probability,
+                    "model_versions": updated_versions,
+                }
+            )
+            logger.info(
+                "ml.scoring_applied",
+                trace_id=trace_id,
+                customer_id=profile.customer_id,
+                risk_score=model_score.risk_score,
+                churn_probability=model_score.churn_probability,
+                model_versions=model_score.model_versions,
+            )
+            return profile.model_copy(update={"signals": updated_signals}), False
+        except Exception as exc:
+            logger.warning(
+                "ml.scoring_degraded",
+                trace_id=trace_id,
+                customer_id=profile.customer_id,
+                reason=str(exc),
+            )
+            return profile, True
+
+    async def _retrieve_memory(
+        self,
+        customer_id: str,
+        session_id: str,
+        scenario: str,
+        trace_id: str,
+        assembled_at: datetime,
+    ) -> tuple[list[CustomerMemory], bool]:
+        """Retrieve long-term memory without making Qdrant a hard Layer 1 dependency."""
+        assert self._memory_store is not None
+        try:
+            memories = await self._memory_store.retrieve(customer_id, scenario, top_k=5)
+            await self._write_memory_retrieved_audit(
+                customer_id=customer_id,
+                session_id=session_id,
+                scenario=scenario,
+                trace_id=trace_id,
+                timestamp=assembled_at,
+                count=len(memories),
+                degraded=False,
+                reason=None,
+            )
+            logger.info(
+                "memory.retrieved",
+                count=len(memories),
+                customer_id=customer_id,
+                trace_id=trace_id,
+                scenario=scenario,
+            )
+            return memories, False
+        except Exception as exc:
+            await self._write_memory_retrieved_audit(
+                customer_id=customer_id,
+                session_id=session_id,
+                scenario=scenario,
+                trace_id=trace_id,
+                timestamp=assembled_at,
+                count=0,
+                degraded=True,
+                reason=str(exc),
+            )
+            logger.warning(
+                "memory.retrieve_degraded",
+                count=0,
+                customer_id=customer_id,
+                trace_id=trace_id,
+                scenario=scenario,
+                reason=str(exc),
+            )
+            return [], True
+
+    async def _write_memory_retrieved_audit(
+        self,
+        customer_id: str,
+        session_id: str,
+        scenario: str,
+        trace_id: str,
+        timestamp: datetime,
+        count: int,
+        degraded: bool,
+        reason: str | None,
+    ) -> None:
+        """Write the Layer 1 memory retrieval audit record."""
+        if self._audit_writer is None:
+            return
+        await self._audit_writer.write(
+            AuditRecord(
+                audit_id=f"aud_memory_retrieved_{timestamp:%Y%m%d_%H%M%S_%f}_{customer_id}",
+                event_type="MEMORY_RETRIEVED",
+                trace_id=trace_id,
+                session_id=session_id,
+                customer_id=customer_id,
+                timestamp=timestamp,
+                layer="1",
+                payload={
+                    "scenario": scenario,
+                    "memory_count": count,
+                    "degraded": degraded,
+                    "reason": reason,
+                },
+            )
         )
 
     def _set_scenario(self, scenario: str) -> None:

@@ -7,6 +7,9 @@ import type {
   ConfigResponse,
   ConnectionTestResponse,
   Decision,
+  EvaluationOptions,
+  EvaluationReport,
+  EvaluationRunRequest,
   Experiment,
   LLMBackendRequest,
   ModelVersion,
@@ -62,6 +65,19 @@ export const api = {
   getLatestAudit: (): Promise<AuditRecord[]> => request<AuditRecord[]>("/audit/latest"),
   getExperiments: (): Promise<Experiment[]> => request<Experiment[]>("/experiments"),
   getModels: (): Promise<ModelVersion[]> => request<ModelVersion[]>("/models"),
+  getEvaluationOptions: (): Promise<EvaluationOptions> =>
+    request<EvaluationOptions>("/evaluation/options"),
+  getEvaluationHistory: (modelName?: string): Promise<EvaluationReport[]> => {
+    const query = modelName === undefined || modelName.length === 0
+      ? ""
+      : `?model_name=${encodeURIComponent(modelName)}`;
+    return request<EvaluationReport[]>(`/evaluation/history${query}`);
+  },
+  runEvaluation: (body: EvaluationRunRequest): Promise<EvaluationReport> =>
+    request<EvaluationReport, EvaluationRunRequest>("/evaluation/run", {
+      method: "POST",
+      body
+    }),
   getRules: (): Promise<Rule[]> => request<Rule[]>("/guardrails/rules"),
   getApprovalQueue: (): Promise<ApprovalQueueItem[]> =>
     request<ApprovalQueueItem[]>("/guardrails/queue"),

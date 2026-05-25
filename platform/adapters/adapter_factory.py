@@ -21,9 +21,14 @@ from platform.core.interfaces import (
     ContextStore,
     FeatureStore,
     LLMClient,
+    LLMInferenceService,
+    MemoryStore,
     QueueStore,
     VectorStore,
 )
+from platform.llm_inference.service import RoutedLLMInferenceService
+from platform.memory.service import QdrantMemoryStore
+from platform.ml.scoring_service import MLScoringService
 
 
 def create_context_store(config: Settings = settings) -> ContextStore:
@@ -51,6 +56,20 @@ def create_vector_store(config: Settings = settings) -> VectorStore:
     return QdrantVectorStore(config.QDRANT_URL, config.QDRANT_COLLECTION)
 
 
+def create_memory_store(config: Settings = settings) -> MemoryStore:
+    """Create the configured long-term memory store."""
+    return QdrantMemoryStore(
+        url=config.QDRANT_URL,
+        collection="customer_memory",
+        embedding_model=config.EMBEDDING_MODEL,
+    )
+
+
+def create_ml_scoring_service() -> MLScoringService:
+    """Create the local artifact-backed ML scoring service."""
+    return MLScoringService()
+
+
 def create_llm_client(config: Settings = settings) -> LLMClient:
     """Create the configured LLM client."""
     match config.LLM_BACKEND:
@@ -68,6 +87,11 @@ def create_llm_client(config: Settings = settings) -> LLMClient:
                 model=config.LLM_MODEL,
                 api_key=key.get_secret_value() if key is not None else None,
             )
+
+
+def create_llm_inference_service(config: Settings = settings) -> LLMInferenceService:
+    """Create the configured routed LLM inference service."""
+    return RoutedLLMInferenceService(primary_client=create_llm_client(config), config=config)
 
 
 def create_channel_adapter(channel_type: str, config: Settings = settings) -> ChannelAdapter:

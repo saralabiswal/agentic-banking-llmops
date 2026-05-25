@@ -20,7 +20,7 @@ export default function Settings(): JSX.Element {
     queryFn: api.getConfig,
     retry: false
   });
-  const [backend, setBackend] = useState<LLMBackendRequest["llmBackend"]>("mock");
+  const [backend, setBackend] = useState<LLMBackendRequest["llmBackend"]>("ollama");
   const [model, setModel] = useState("llama3.2");
   const [ollamaBaseUrl, setOllamaBaseUrl] = useState("http://localhost:11434");
   const [apiKey, setApiKey] = useState("");

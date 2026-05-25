@@ -22,6 +22,11 @@ interface FailureRow {
   description: string;
 }
 
+interface ProblemPoint {
+  label: string;
+  value: string;
+}
+
 interface LayerValue {
   id: "L1" | "L2" | "L3" | "L4" | "L5" | "L6";
   name: string;
@@ -43,6 +48,19 @@ interface Principle {
   description: string;
 }
 
+interface Capability {
+  icon: LucideIcon;
+  title: string;
+  functional: string;
+  technical: string;
+}
+
+interface PlatformSummaryStep {
+  label: string;
+  title: string;
+  description: string;
+}
+
 type AboutTabId = "problem" | "six-layers" | "scenarios" | "principles";
 
 const sectionTabs = [
@@ -52,7 +70,55 @@ const sectionTabs = [
   { id: "principles", label: "Principles" }
 ] satisfies { id: AboutTabId; label: string }[];
 
-const tags = ["Open Source", "No API Key Required", "Cloud Agnostic", "Regulatory Replay"];
+const tags = ["Open Source", "Ollama Default", "Cloud Agnostic", "Regulatory Replay"];
+
+const platformSummarySteps: PlatformSummaryStep[] = [
+  {
+    label: "Problem",
+    title: "Customer decisions need current context",
+    description:
+      "Batch scores, static prompts, and disconnected product workflows miss same-day account movement, support signals, policy changes, and prior interventions."
+  },
+  {
+    label: "Solution",
+    title: "One governed path from signal to action",
+    description:
+      "The platform assembles live context, retrieves policy, routes agents, applies guardrails, selects experiments, executes actions, and captures outcomes."
+  },
+  {
+    label: "Technical proof",
+    title: "Every step is typed, observable, and replayable",
+    description:
+      "Adapters, Qdrant retrieval, LLM routing, PostgreSQL audit history, MLflow evaluation, and trace IDs connect the functional journey to runtime evidence."
+  }
+];
+
+const capabilities: Capability[] = [
+  {
+    icon: Zap,
+    title: "Live intervention loop",
+    functional: "Responds to current customer context instead of stale batch-only signals.",
+    technical: "Parallel source adapters, ML scoring, memory retrieval, and typed Layer 1 profiles."
+  },
+  {
+    icon: Shield,
+    title: "Governed actioning",
+    functional: "Keeps customer-facing actions behind policy, fairness, and approval checks.",
+    technical: "Layer 4 guardrails run before SDK execution and write replayable audit records."
+  },
+  {
+    icon: FileSearch,
+    title: "Explainable decisions",
+    functional: "Shows what data, memory, policy, model, and outcome shaped the recommendation.",
+    technical: "Trace IDs connect context, vector retrieval, LLM inference, guardrails, outcomes, and audit."
+  },
+  {
+    icon: Cloud,
+    title: "Portable reference stack",
+    functional: "Lets teams validate the architecture locally and map it to managed services later.",
+    technical: "Ollama, PostgreSQL, Valkey, Qdrant, MLflow, and OpenTelemetry-backed interfaces."
+  }
+];
 
 const problemParagraphs = [
   "Banks hold enough customer data to act before a customer misses a payment, churns, or disputes a charge. But most AI interventions arrive too late, act on stale data, or fire without any compliance check.",
@@ -60,26 +126,41 @@ const problemParagraphs = [
   "At the same time, every product team building AI features reimplements the same pipeline: fetch context, retrieve policy, run a model, check compliance, deliver the action. Each reimplementation has gaps. Each gap is a compliance risk or a quality failure waiting to surface."
 ];
 
+const problemPoints: ProblemPoint[] = [
+  {
+    label: "Stale signal",
+    value: "Batch scores miss same-day transfers, tickets, and prior interventions."
+  },
+  {
+    label: "Missing policy context",
+    value: "Prompts alone cannot reliably select the right regulation or playbook."
+  },
+  {
+    label: "Unproven action",
+    value: "Teams need audit, outcome, memory, and evaluation evidence before scaling."
+  }
+];
+
 const failureRows: FailureRow[] = [
   {
     title: "Batch scoring latency",
     description:
-      "Nightly risk scores are stale by morning. A customer who transferred funds, opened a ticket, or received a prior intervention looks identical to one who did not. Agents reasoning on yesterday's data make decisions that feel wrong to the customer."
+      "Nightly scores are stale by morning. Agents reasoning on yesterday's data make decisions that feel wrong to the customer."
   },
   {
     title: "Prompt-stuffed context",
     description:
-      "Stuffing entire customer histories into LLM prompts is expensive, slow, and imprecise. Without a retrieval layer, agents cannot distinguish which policy applies to this customer's situation from thousands of documents."
+      "Whole customer histories in prompts are slow and imprecise. Retrieval must identify the policy that applies right now."
   },
   {
     title: "Ungoverned agent actions",
     description:
-      "An agent that can directly execute — send a push, create a case, apply a rate reduction — has no compliance gate. One misconfigured prompt or injected instruction can trigger a customer-facing action that violates fair lending, CFPB, or UDAAP requirements."
+      "Agents that directly send messages, create cases, or apply offers bypass the compliance gate that banking needs."
   },
   {
-    title: "No feedback loop",
+    title: "No closed-loop governance",
     description:
-      "An intervention that fires has no way to measure whether it worked, which variant performed better, or whether the underlying model is drifting. Without outcome capture, there is no learning."
+      "Outcomes, memory, experiments, LLM reasoning, and model/version evaluations need one durable evidence path."
   }
 ];
 
@@ -87,7 +168,8 @@ const layers: LayerValue[] = [
   {
     id: "L1",
     name: "Context Assembly",
-    value: "Live customer context assembled from every source system in under 200ms — not last night's batch."
+    value:
+      "Live customer context assembled from source systems, long-term Qdrant memory, and classical ML scoring — with graceful fallback when any source is unavailable."
   },
   {
     id: "L2",
@@ -98,7 +180,8 @@ const layers: LayerValue[] = [
   {
     id: "L3",
     name: "Multi-Agent Orchestration",
-    value: "Specialized agents that propose actions through a governed hub — never executing directly against customer systems."
+    value:
+      "Specialized agents propose actions through a governed hub and route every model call through the LLM inference service for timeout, fallback, and provider visibility."
   },
   {
     id: "L4",
@@ -109,7 +192,7 @@ const layers: LayerValue[] = [
     id: "L5",
     name: "A/B Evaluation",
     value:
-      "Interventions that improve over time through deterministic variant assignment, outcome capture, and drift detection."
+      "Interventions and models improve over time through deterministic variants, outcome capture, MLflow lineage, drift detection, and durable evaluation gates."
   },
   {
     id: "L6",
@@ -157,7 +240,7 @@ const principles: Principle[] = [
     icon: Zap,
     title: "Live context over cached snapshots",
     description:
-      "Agents act on data fetched at decision time. Stale batch exports produce decisions that feel wrong to the customer."
+      "Agents act on current source data plus retrieved cross-session customer memory. Stale batch exports alone produce decisions that feel wrong to the customer."
   },
   {
     icon: Shield,
@@ -180,13 +263,13 @@ const principles: Principle[] = [
     icon: FileSearch,
     title: "Full lineage for regulatory replay",
     description:
-      "One trace_id reconstructs what data the agent had, which policy it followed, what compliance checks ran, and what the outcome was."
+      "One trace_id reconstructs what data the agent had, what memory was retrieved, which policy it followed, what model or LLM was used, what compliance checks ran, and what the outcome was."
   },
   {
     icon: Cloud,
     title: "Cloud-agnostic by design",
     description:
-      "Patterns are universal. Valkey, PostgreSQL, Qdrant, and Jaeger map directly to ElastiCache, RDS, Pinecone, and X-Ray in production."
+      "Patterns are universal. Valkey, PostgreSQL, Qdrant, MLflow, and Jaeger map directly to managed cache, database, vector, registry, and tracing services in production."
   },
   {
     icon: Lock,
@@ -198,7 +281,7 @@ const principles: Principle[] = [
     icon: Archive,
     title: "Immutable audit trail",
     description:
-      "Audit records are written once and never modified. Regulatory records must survive longer than the sessions that created them."
+      "Audit records, model outcomes, and evaluation history are retained for replay. Regulatory evidence must survive longer than the sessions that created it."
   }
 ];
 
@@ -211,22 +294,40 @@ export default function About(): JSX.Element {
   return (
     <section className="space-y-5" data-testid="about-page">
       <section className="overflow-hidden rounded-md border border-slate-800 bg-slate-900">
-        <div className="p-6">
-          <div className="text-xs font-bold uppercase tracking-widest text-emerald-300">About the platform</div>
-          <p className="mt-4 max-w-5xl text-sm leading-7 text-slate-300">
-            A six-layer, open-source reference architecture that shows how to build AI-powered banking
-            interventions that are live, governed, measurable, and explainable — end to end.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <span
-                className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200"
-                key={tag}
-              >
-                {tag}
-              </span>
-            ))}
+        <div className="grid gap-6 p-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(440px,0.75fr)] xl:items-start">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-widest text-emerald-300">About the platform</div>
+            <h2 className="mt-4 max-w-4xl text-xl font-semibold leading-8 text-white">
+              Banking AI fails when decisions are stale, ungoverned, or impossible to replay.
+            </h2>
+            <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-300">
+              A working banking AI platform for turning live customer signals into compliant, traceable
+              actions. The six layers connect context, policy, agents, guardrails, experiments, and outcomes
+              so every recommendation can be explained, measured, and replayed.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span
+                  className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200"
+                  key={tag}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <div className="mt-6 grid gap-3 lg:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+              {platformSummarySteps.map((step) => (
+                <div className="rounded-md border border-slate-800 bg-slate-950 p-3" key={step.label}>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                    {step.label}
+                  </div>
+                  <h3 className="mt-2 text-sm font-semibold text-white">{step.title}</h3>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">{step.description}</p>
+                </div>
+              ))}
+            </div>
           </div>
+          <CapabilitySummary />
         </div>
         <nav
           aria-label="About sections"
@@ -258,6 +359,33 @@ export default function About(): JSX.Element {
   );
 }
 
+function CapabilitySummary(): JSX.Element {
+  return (
+    <aside className="rounded-md border border-slate-800 bg-slate-950 p-4">
+      <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
+        Capability Snapshot
+      </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+        {capabilities.map((capability) => {
+          const Icon = capability.icon;
+          return (
+            <div className="rounded-md border border-slate-800 bg-slate-900 p-3" key={capability.title}>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-400/30 bg-emerald-500/10 text-emerald-200">
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
+                <h3 className="text-sm font-semibold text-white">{capability.title}</h3>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-slate-300">{capability.functional}</p>
+              <p className="mt-2 text-xs leading-5 text-slate-500">{capability.technical}</p>
+            </div>
+          );
+        })}
+      </div>
+    </aside>
+  );
+}
+
 function renderActiveTab(activeTab: AboutTabId): JSX.Element {
   if (activeTab === "six-layers") {
     return <SixLayerSolution />;
@@ -273,22 +401,35 @@ function renderActiveTab(activeTab: AboutTabId): JSX.Element {
 
 function ProblemSection(): JSX.Element {
   return (
-    <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <section className="grid gap-4 xl:grid-cols-[minmax(360px,0.92fr)_minmax(0,1.08fr)]">
       <article className="rounded-md border border-slate-800 bg-slate-900 p-5">
         <SectionLabel value="The Problem" />
-        <div className="mt-4 space-y-3">
-          {problemParagraphs.map((paragraph) => (
-            <p className="text-sm leading-7 text-slate-300" key={paragraph}>
-              {paragraph}
-            </p>
+        <h2 className="mt-3 max-w-3xl text-lg font-semibold leading-7 text-white">
+          Banking AI has to be current, governed, measurable, and explainable at the moment of action.
+        </h2>
+        <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">
+          {problemParagraphs[0]}
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+          {problemPoints.map((point) => (
+            <div className="rounded-md border border-slate-800 bg-slate-950 p-3" key={point.label}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                {point.label}
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-300">{point.value}</p>
+            </div>
           ))}
+        </div>
+        <div className="mt-4 rounded-md border border-blue-400/30 bg-blue-500/10 p-3 text-sm leading-6 text-slate-200">
+          The platform turns that repeated work into one reusable flow: assemble context, retrieve
+          policy, score and reason, enforce guardrails, execute safely, and retain evidence.
         </div>
       </article>
       <article className="rounded-md border border-slate-800 bg-slate-900 p-5">
         <SectionLabel value="Why Existing Approaches Fall Short" />
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           {failureRows.map((row) => (
-            <div className="rounded-md border border-slate-800 bg-slate-950 p-3" key={row.title}>
+            <div className="min-h-[128px] rounded-md border border-slate-800 bg-slate-950 p-3" key={row.title}>
               <h3 className="text-sm font-semibold text-white">{row.title}</h3>
               <p className="mt-1 text-xs leading-5 text-slate-400">{row.description}</p>
             </div>
@@ -305,9 +446,10 @@ function SixLayerSolution(): JSX.Element {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <SectionLabel value="The Six-Layer Solution" />
-          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-400">
-            Each layer solves one problem. Together they form a governed pipeline that product teams can
-            consume in a few lines of code.
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
+            Each layer solves one problem while preserving the evidence needed for the next layer. Together
+            they form a governed pipeline with live context, memory, model scoring, LLM inference controls,
+            compliant execution, and durable evaluation history.
           </p>
         </div>
       </div>

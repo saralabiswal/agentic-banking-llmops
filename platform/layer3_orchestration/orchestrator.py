@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from platform.core.config import Settings, settings
 from platform.core.exceptions import PipelineError, SessionExpiredError, ToolAuthorizationError
-from platform.core.interfaces import AuditWriter, ContextStore, LLMClient
+from platform.core.interfaces import AuditWriter, ContextStore, LLMClient, LLMInferenceService
 from platform.core.schemas import (
     AgentContext,
     AgentOutput,
@@ -34,6 +34,8 @@ from platform.layer3_orchestration.agents import (
 from platform.layer3_orchestration.pipeline_registry import BranchStep, PipelineStep, get_pipeline
 from platform.layer3_orchestration.state_manager import PipelineStateManager
 from platform.layer3_orchestration.tool_registry import authorized_tools_for_agent
+from platform.llm_inference.router import route_for_task
+from platform.llm_inference.service import RoutedLLMInferenceService
 from platform.observability.metrics import metered
 from platform.observability.tracing import traced
 from typing import Any
@@ -78,7 +80,8 @@ class Orchestrator:
     def __init__(
         self,
         context_store: ContextStore,
-        llm_client: LLMClient,
+        llm_client: LLMClient | None = None,
+        llm_inference_service: LLMInferenceService | None = None,
         audit_writer: AuditWriter | None = None,
         state_manager: PipelineStateManager | None = None,
         human_review_queue: HumanReviewQueue | None = None,
@@ -87,7 +90,19 @@ class Orchestrator:
     ) -> None:
         """Create an orchestrator with injected infrastructure and agents."""
         self._context_store = context_store
-        self._llm_client = llm_client
+        primary_client = llm_client
+        if primary_client is None and llm_inference_service is None:
+            from platform.adapters.adapter_factory import create_llm_client
+
+            primary_client = create_llm_client(config)
+        if llm_inference_service is not None:
+            self._llm_inference_service = llm_inference_service
+        else:
+            assert primary_client is not None
+            self._llm_inference_service = RoutedLLMInferenceService(
+                primary_client=primary_client,
+                config=config,
+            )
         self._audit_writer = audit_writer
         self._state_manager = state_manager or PipelineStateManager(context_store, config)
         self._human_review_queue = human_review_queue or HumanReviewQueue()
@@ -267,13 +282,20 @@ class Orchestrator:
             prior_outputs=prior_outputs,
             authorized_tools=authorized_tools_for_agent(step.agent),
             max_tokens=agent.max_tokens,
-            timeout_ms=step.timeout_ms,
+            timeout_ms=self._agent_timeout_ms(step, agent),
         )
         # Timeout is enforced in code so prompt behavior cannot bypass the SLA.
         return await asyncio.wait_for(
-            agent.run(context=context, llm=self._llm_client),
-            timeout=step.timeout_ms / 1000,
+            agent.run(context=context, llm=self._llm_inference_service),
+            timeout=context.timeout_ms / 1000,
         )
+
+    def _agent_timeout_ms(self, step: PipelineStep, agent: BaseAgent) -> int:
+        """Return an orchestration timeout that leaves room for real LLM calls."""
+        route = route_for_task(agent.task_type, self._config)
+        if route.primary_backend == "mock":
+            return step.timeout_ms
+        return max(step.timeout_ms, route.latency_budget_ms + 5000)
 
     async def _handle_branch(
         self,

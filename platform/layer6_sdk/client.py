@@ -9,6 +9,7 @@ from datetime import datetime
 from platform.core.schemas import ExecutionResult, OutcomeEvent
 from platform.layer6_sdk.blueprint_runner import BlueprintRunner
 from platform.layer6_sdk.outcome_router import OutcomeRouter
+from platform.memory.writer import MemoryWriter
 from platform.observability.metrics import metered
 from platform.observability.tracing import traced
 from uuid import uuid4
@@ -27,6 +28,11 @@ class BankingAgenticAIClient:
         self._outcome_router = outcome_router or OutcomeRouter(
             experiment_service=self._runner.experiment_service,
             audit_writer=self._runner.audit_writer,
+            memory_writer=(
+                MemoryWriter(self._runner.memory_store, self._runner.audit_writer)
+                if self._runner.memory_store is not None
+                else None
+            ),
         )
 
     @traced(layer="L6", operation="client_execute")

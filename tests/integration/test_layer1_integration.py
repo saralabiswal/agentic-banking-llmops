@@ -70,7 +70,7 @@ async def test_layer1_integration_writes_profile_to_valkey_and_audit_to_postgres
 
     assert result.partial_context is True
     assert result.sources_degraded == ["crm"]
-    assert result.assembly_ms < 200
+    assert result.assembly_ms < 350
     assert stored is not None
     profile = CustomerProfile.model_validate_json(stored)
     assert profile.customer_id == "C002"

@@ -44,23 +44,23 @@ export default function GuardrailsView(): JSX.Element {
     <section className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-white">Guardrails</h2>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-slate-300">
           Runtime policy enforcement, rule store visibility, and approval queue workflow.
         </p>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]" data-testid="guardrails-page">
         <section className="space-y-4">
-          <div className="rounded-md border border-slate-800 bg-slate-900 p-3">
-            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+          <div className="rounded-md border border-slate-700 bg-slate-900 p-3">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-300">
               <span className="font-bold text-red-300">REGULATORY</span>
-              <span className="text-slate-600">blocks immediately on failure</span>
-              <span className="mx-1 text-slate-700">-&gt;</span>
+              <span className="text-slate-400">blocks immediately on failure</span>
+              <span className="mx-1 text-slate-500">-&gt;</span>
               <span className="font-bold text-amber-300">BUSINESS POLICY</span>
-              <span className="text-slate-600">flags for approval</span>
-              <span className="mx-1 text-slate-700">-&gt;</span>
+              <span className="text-slate-400">flags for approval</span>
+              <span className="mx-1 text-slate-500">-&gt;</span>
               <span className="font-bold text-blue-300">RESPONSIBLE AI</span>
-              <span className="text-slate-600">confidence + fairness</span>
+              <span className="text-slate-400">confidence + fairness</span>
             </div>
           </div>
           {categories.map((category) => (
@@ -72,17 +72,17 @@ export default function GuardrailsView(): JSX.Element {
           ))}
         </section>
 
-        <aside className="rounded-md border border-slate-800 bg-slate-900 p-4">
+        <aside className="rounded-md border border-slate-700 bg-slate-900 p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-emerald-300" />
               <h3 className="text-sm font-semibold text-white">Approval Queue</h3>
             </div>
-            <span className="text-xs text-slate-500">{queueItems.length} pending</span>
+            <span className="text-xs text-slate-400">{queueItems.length} pending</span>
           </div>
           <div className="space-y-3" data-testid="approval-queue">
             {queueItems.length === 0 ? (
-              <div className="rounded-md border border-slate-800 bg-slate-950 p-4 text-sm text-slate-500">
+              <div className="rounded-md border border-slate-700 bg-slate-950 p-4 text-sm text-slate-300">
                 Run the payment risk demo to create a flagged approval item.
               </div>
             ) : (
@@ -104,27 +104,27 @@ export default function GuardrailsView(): JSX.Element {
 
 function RuleCategory({ category, rules }: { category: Rule["category"]; rules: Rule[] }): JSX.Element {
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-900 p-4">
+    <div className="rounded-md border border-slate-700 bg-slate-900 p-4">
       <h3 className="mb-3 text-sm font-semibold text-white">{category.replace(/_/g, " ")}</h3>
       <div className="grid gap-3 md:grid-cols-2">
         {rules.map((rule) => (
-          <div className="rounded-md border border-slate-800 bg-slate-950 p-3" key={rule.ruleId}>
+          <div className="rounded-md border border-slate-700 bg-slate-950 p-3" key={rule.ruleId}>
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-semibold text-slate-100">{rule.ruleId}</span>
               <span className="rounded-sm border border-blue-400/60 px-2 py-1 text-xs font-semibold text-blue-200">
                 v{rule.version}
               </span>
             </div>
-            <p className="mt-2 text-sm leading-6 text-slate-400">{rule.description ?? "Rule"}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{rule.description ?? "Rule"}</p>
             <div className="mt-3 space-y-1">
               {Object.entries(rule.condition ?? {}).length === 0 ? (
-                <div className="rounded-sm bg-slate-900 px-2 py-1.5 text-xs text-slate-500">
+                <div className="rounded-sm bg-slate-900 px-2 py-1.5 text-xs text-slate-300">
                   No condition metadata
                 </div>
               ) : (
                 Object.entries(rule.condition ?? {}).map(([key, value]) => (
                   <div className="flex items-center gap-2 rounded-sm bg-slate-900 px-2 py-1.5" key={key}>
-                    <span className="w-20 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    <span className="w-20 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                       {key.replace(/_/g, " ")}
                     </span>
                     <span className="truncate font-mono text-xs text-amber-200">
@@ -143,7 +143,7 @@ function RuleCategory({ category, rules }: { category: Rule["category"]; rules: 
               >
                 {rule.outcome ?? "FLAG"}
               </span>
-              <span className="text-xs text-slate-500">on match</span>
+              <span className="text-xs text-slate-400">on match</span>
             </div>
           </div>
         ))}
@@ -162,24 +162,24 @@ function ApprovalQueueCard({
   onDecision: (decision: Decision) => void;
 }): JSX.Element {
   return (
-    <article className="rounded-md border border-slate-800 bg-slate-950 p-4">
+    <article className="rounded-md border border-slate-700 bg-slate-950 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h4 className="text-sm font-semibold text-white">{item.action.actionId}</h4>
-          <p className="mt-1 text-xs text-slate-500">{item.queueId}</p>
+          <p className="mt-1 text-xs text-slate-400">{item.queueId}</p>
         </div>
         <span className="rounded-sm border border-blue-400/60 px-2 py-1 text-xs font-semibold text-blue-200">
           {item.priority}
         </span>
       </div>
-      <div className="mt-3 rounded-md border border-slate-800 bg-slate-900 p-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">SLA Countdown</div>
+      <div className="mt-3 rounded-md border border-slate-700 bg-slate-900 p-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">SLA Countdown</div>
         <div className="mt-1 font-mono text-lg font-semibold text-emerald-200" data-testid="sla-countdown">
           {formatRemaining(new Date(item.slaDeadline).getTime() - now.getTime())}
         </div>
       </div>
       <div className="mt-3 space-y-1.5">
-        <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
           Flag Reasons
         </div>
         {item.flagReasons.map((reason) => (
@@ -194,21 +194,21 @@ function ApprovalQueueCard({
           </div>
         ))}
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2 rounded-md border border-slate-800 bg-slate-900 p-2.5 text-xs">
+      <div className="mt-3 grid grid-cols-3 gap-2 rounded-md border border-slate-700 bg-slate-900 p-2.5 text-xs">
         <div>
-          <div className="text-slate-500">Customer</div>
+          <div className="text-slate-400">Customer</div>
           <div className="font-semibold text-slate-100">
             {String(item.context.customerId ?? "-")}
           </div>
         </div>
         <div>
-          <div className="text-slate-500">Risk Level</div>
+          <div className="text-slate-400">Risk Level</div>
           <div className={`font-bold ${riskLevelClass(item.context.riskLevel)}`}>
             {String(item.context.riskLevel ?? "-")}
           </div>
         </div>
         <div>
-          <div className="text-slate-500">Reviewer</div>
+          <div className="text-slate-400">Reviewer</div>
           <div className="font-semibold text-slate-100">
             {item.assignedTo ?? "unassigned"}
           </div>

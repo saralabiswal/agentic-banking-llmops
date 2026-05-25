@@ -2,7 +2,7 @@
  * Author: Sarala Biswal
  */
 import { useQuery } from "@tanstack/react-query";
-import { Copy, ExternalLink, Play } from "lucide-react";
+import { BrainCircuit, Copy, Cpu, ExternalLink, Play } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { api } from "../api/client";
@@ -55,6 +55,8 @@ export default function PipelineRunner(): JSX.Element {
   });
   const executionResult = status.data?.executionResult ?? null;
   const summary = buildSummary(layers, executionResult, traceId);
+  const mlScoring = buildMlScoringSummary(parseSummary(layers.L1));
+  const llmInference = buildLlmInferenceSummary(parseSummary(layers.L3));
 
   async function runPipeline(): Promise<void> {
     setSearchParams({});
@@ -151,13 +153,13 @@ export default function PipelineRunner(): JSX.Element {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(520px,0.78fr)_minmax(520px,1fr)]">
         <section className="rounded-md border border-slate-800 bg-slate-900 p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-white">Execution Log</h3>
             <span className="text-xs text-slate-500">{eventLog.length} events</span>
           </div>
-          <div className="h-[360px] overflow-y-auto rounded-md border border-slate-800 bg-slate-950 p-3" data-testid="execution-log">
+          <div className="h-[236px] overflow-y-auto rounded-md border border-slate-800 bg-slate-950 p-3" data-testid="execution-log">
             {eventLog.length === 0 ? (
               <div className="text-sm text-slate-500">Run a pipeline to stream layer events.</div>
             ) : (
@@ -175,11 +177,11 @@ export default function PipelineRunner(): JSX.Element {
               </div>
             )}
           </div>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {layerList.map((layer) => (
               <div
                 key={layer.id}
-                className="grid grid-cols-[72px_120px_minmax(0,1fr)] items-center gap-4 rounded-md border border-slate-800 bg-slate-950 px-4 py-3"
+                className="grid grid-cols-[40px_112px_minmax(0,1fr)] items-center gap-3 rounded-md border border-slate-800 bg-slate-950 px-3 py-3"
               >
                 <span className="text-sm font-semibold text-slate-200">{layer.id}</span>
                 <LayerStatusBadge status={layer.status} />
@@ -202,20 +204,42 @@ export default function PipelineRunner(): JSX.Element {
               {copied ? "Copied" : "Copy Trace"}
             </button>
           </div>
-          <dl className="space-y-3 text-sm">
+          <dl className="grid gap-3 text-sm md:grid-cols-2">
             <SummaryRow label="Risk Level" value={summary.riskLevel} />
             <SummaryRow label="Intervention" value={summary.intervention} />
             <SummaryRow label="ACT-001" value={summary.act001} />
             <SummaryRow label="ACT-002" value={summary.act002} />
             <SummaryRow label="Variant" value={summary.variant} />
             <SummaryRow label="Total Latency" value={summary.totalLatency} />
-            <SummaryRow label="Trace ID" value={traceId ?? "-"} />
+            <SummaryRow className="md:col-span-2" label="Trace ID" value={traceId ?? "-"} />
           </dl>
+          <div className="mt-5 grid gap-3 2xl:grid-cols-2">
+            <LayerInsightCard
+              icon={<BrainCircuit className="h-4 w-4 text-emerald-300" />}
+              title="Layer 1 ML Scoring"
+              status={mlScoring.status}
+              rows={[
+                { label: "Source", value: mlScoring.source },
+                { label: "Versions", value: mlScoring.versions }
+              ]}
+            />
+            <LayerInsightCard
+              icon={<Cpu className="h-4 w-4 text-blue-300" />}
+              title="Layer 3 LLM Inference"
+              status={llmInference.status}
+              rows={[
+                { label: "Primary", value: llmInference.primary },
+                { label: "Served", value: llmInference.served },
+                { label: "Fallback", value: llmInference.fallbacks },
+                { label: "Tokens", value: llmInference.tokens }
+              ]}
+            />
+          </div>
           <div className="mt-5 rounded-md border border-slate-800 bg-slate-950 p-3">
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Layer Outputs
             </div>
-            <div className="space-y-2">
+            <div className="grid gap-2 md:grid-cols-2">
               {layerList.map((layer) => (
                 <div className="flex items-start justify-between gap-3 text-xs" key={layer.id}>
                   <span className="font-semibold text-slate-300">{layer.id}</span>
@@ -230,11 +254,55 @@ export default function PipelineRunner(): JSX.Element {
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }): JSX.Element {
+function LayerInsightCard({
+  icon,
+  title,
+  status,
+  rows
+}: {
+  icon: JSX.Element;
+  title: string;
+  status: string;
+  rows: { label: string; value: string }[];
+}): JSX.Element {
   return (
-    <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-3">
+    <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {icon}
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            {title}
+          </h4>
+        </div>
+        <span className="rounded-md border border-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-200">
+          {status}
+        </span>
+      </div>
+      <dl className="space-y-2 text-xs">
+        {rows.map((row) => (
+          <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-3" key={row.label}>
+            <dt className="text-slate-500">{row.label}</dt>
+            <dd className="text-slate-200">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function SummaryRow({
+  className = "",
+  label,
+  value
+}: {
+  className?: string;
+  label: string;
+  value: string;
+}): JSX.Element {
+  return (
+    <div className={`grid grid-cols-[96px_minmax(0,1fr)] gap-3 ${className}`}>
       <dt className="text-slate-500">{label}</dt>
-      <dd className="text-slate-100">{value}</dd>
+      <dd className="break-words text-slate-100">{value}</dd>
     </div>
   );
 }
@@ -251,6 +319,7 @@ function buildSummary(
   variant: string;
   totalLatency: string;
 } {
+  // Results Summary combines SSE layer summaries with final status details from /pipeline/status.
   const l3 = parseSummary(layers.L3);
   const l4 = parseSummary(layers.L4);
   const l5 = parseSummary(layers.L5);
@@ -259,6 +328,7 @@ function buildSummary(
   const approvedActions = arrayValue(l4?.approved_actions);
   const flaggedActions = arrayValue(l4?.flagged_actions);
   const pendingForTrace = (executionResult?.pendingActions ?? []).filter((item) => {
+    // Approval queues can contain older runs; keep this summary scoped to the active trace.
     const contextTraceId = stringValue(item.context.traceId);
     return traceId === null || contextTraceId === traceId;
   });
@@ -346,6 +416,7 @@ function outputLabel(layer: LayerState): string {
 }
 
 function parseSummary(layer: LayerState | undefined): Record<string, unknown> | null {
+  // Layer summaries are serialized for the store, so UI helpers parse defensively.
   if (layer?.summary === null || layer?.summary === undefined) {
     return null;
   }
@@ -354,6 +425,89 @@ function parseSummary(layer: LayerState | undefined): Record<string, unknown> | 
   } catch {
     return null;
   }
+}
+
+function buildMlScoringSummary(summary: Record<string, unknown> | null): {
+  status: string;
+  source: string;
+  versions: string;
+} {
+  // L1 can use artifact-backed ML scoring, feature-store fixtures, or a degraded fallback.
+  const sourcesAvailable = arrayValue(summary?.sources_available).map((value) => String(value));
+  const sourcesDegraded = arrayValue(summary?.sources_degraded).map((value) => String(value));
+  const modelVersions = asRecord(summary?.model_versions_used);
+  const versions = modelVersions === null
+    ? []
+    : Object.entries(modelVersions).map(([name, version]) => `${formatMetricName(name)} v${String(version)}`);
+
+  if (sourcesAvailable.includes("ml_scoring")) {
+    return {
+      status: "Active",
+      source: "ML scoring service",
+      versions: versions.length > 0 ? versions.join(", ") : "-"
+    };
+  }
+  if (sourcesDegraded.includes("ml_scoring")) {
+    return {
+      status: "Degraded",
+      source: "Feature-store fallback",
+      versions: versions.length > 0 ? versions.join(", ") : "-"
+    };
+  }
+  return {
+    status: summary === null ? "Waiting" : "Fixture",
+    source: summary === null ? "-" : "Feature-store signals",
+    versions: versions.length > 0 ? versions.join(", ") : "-"
+  };
+}
+
+function buildLlmInferenceSummary(summary: Record<string, unknown> | null): {
+  status: string;
+  primary: string;
+  served: string;
+  fallbacks: string;
+  tokens: string;
+} {
+  // L3 agent outputs carry inference metadata under _inference for primary/served model display.
+  const inferences = arrayValue(summary?.agent_outputs)
+    .map((item) => asRecord(asRecord(item)?.output)?._inference)
+    .map(asRecord)
+    .filter((item): item is Record<string, unknown> => item !== null);
+  if (inferences.length === 0) {
+    return {
+      status: summary === null ? "Waiting" : "No metadata",
+      primary: "-",
+      served: "-",
+      fallbacks: "-",
+      tokens: "-"
+    };
+  }
+  const servedModels = uniqueStrings(inferences.map((item) => stringValue(item.model_id)));
+  const servedBackends = uniqueStrings(inferences.map((item) => stringValue(item.backend)));
+  const primaryModels = uniqueStrings(inferences.map((item) => stringValue(item.primary_model_id)));
+  const primaryBackends = uniqueStrings(inferences.map((item) => stringValue(item.primary_backend)));
+  const fallbackReasons = uniqueStrings(inferences.map((item) => stringValue(item.fallback_reason)));
+  const fallbackCount = inferences.filter((item) => item.fallback_used === true).length;
+  const promptTokens = sumNumbers(inferences.map((item) => numberValue(item.prompt_tokens)));
+  const completionTokens = sumNumbers(inferences.map((item) => numberValue(item.completion_tokens)));
+  const latencyMs = sumNumbers(inferences.map((item) => numberValue(item.latency_ms)));
+
+  return {
+    status: fallbackCount > 0 ? "Fallback" : `${inferences.length} call${inferences.length === 1 ? "" : "s"}`,
+    primary:
+      primaryBackends.length > 0 || primaryModels.length > 0
+        ? `${primaryBackends.join(", ") || "-"} / ${primaryModels.join(", ") || "-"}`
+        : "-",
+    served:
+      servedBackends.length > 0 || servedModels.length > 0
+        ? `${servedBackends.join(", ") || "-"} / ${servedModels.join(", ") || "-"}`
+        : "-",
+    fallbacks:
+      fallbackCount > 0
+        ? `${fallbackCount}; ${fallbackReasons.join(", ") || "primary failed"}`
+        : "0",
+    tokens: `${promptTokens}/${completionTokens} prompt/completion; ${latencyMs}ms`
+  };
 }
 
 function riskOutput(summary: Record<string, unknown> | null): Record<string, unknown> | null {
@@ -413,6 +567,21 @@ function stringValue(value: unknown): string | null {
 
 function numberValue(value: unknown): number | null {
   return typeof value === "number" ? value : null;
+}
+
+function sumNumbers(values: (number | null)[]): number {
+  return values.reduce<number>((total, value) => total + (value ?? 0), 0);
+}
+
+function uniqueStrings(values: (string | null)[]): string[] {
+  return [...new Set(values.filter((value): value is string => value !== null))];
+}
+
+function formatMetricName(value: string): string {
+  return value
+    .split("_")
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(" ");
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

@@ -22,15 +22,21 @@ class OllamaLLMClient:
 
     async def complete(self, system: str, user: str, schema: type[BaseModel]) -> dict[str, Any]:
         """Request JSON output from Ollama and validate it against schema."""
+        json_schema = schema.model_json_schema()
+        schema_instruction = (
+            "Return one JSON object that validates against this JSON Schema. "
+            "Do not include markdown, commentary, or extra wrapper fields.\n"
+            f"{json.dumps(json_schema, sort_keys=True)}"
+        )
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
                 f"{self._base_url}/api/chat",
                 json={
                     "model": self._model,
-                    "format": "json",
+                    "format": json_schema,
                     "stream": False,
                     "messages": [
-                        {"role": "system", "content": system},
+                        {"role": "system", "content": f"{system}\n\n{schema_instruction}"},
                         {"role": "user", "content": user},
                     ],
                 },

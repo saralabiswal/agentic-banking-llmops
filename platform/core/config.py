@@ -14,7 +14,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Environment-backed platform settings."""
 
-    LLM_BACKEND: Literal["mock", "ollama", "api"] = "mock"
+    LLM_BACKEND: Literal["mock", "ollama", "api"] = "ollama"
     LLM_MODEL: str = "llama3.2"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     ANTHROPIC_API_KEY: SecretStr | None = None

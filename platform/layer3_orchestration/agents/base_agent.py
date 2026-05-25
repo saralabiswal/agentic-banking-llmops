@@ -5,11 +5,13 @@ Author: Sarala Biswal
 
 from __future__ import annotations
 
+import json
 import time
 from platform.core.exceptions import ToolAuthorizationError
-from platform.core.interfaces import LLMClient
+from platform.core.interfaces import LLMInferenceService
 from platform.core.schemas import AgentContext, AgentOutput
 from platform.layer3_orchestration.tool_registry import authorize_tool_call
+from platform.llm_inference.schemas import TaskType
 from platform.observability.metrics import metered
 from platform.observability.tracing import traced
 from typing import ClassVar
@@ -31,22 +33,42 @@ class BaseAgent:
     output_schema: ClassVar[type[BaseModel]] = BaseModel
     required_tools: ClassVar[tuple[str, ...]] = ()
     max_tokens: ClassVar[int] = 2048
+    task_type: ClassVar[TaskType] = TaskType.RISK_SCORING
 
     @traced(layer="L3", operation="agent_run")
     @metered(layer="L3")
-    async def run(self, context: AgentContext, llm: LLMClient) -> AgentOutput:
+    async def run(self, context: AgentContext, llm: LLMInferenceService) -> AgentOutput:
         """Run the agent and validate the model output against its schema."""
         started = time.perf_counter()
         self._authorize_required_tools(context)
-        raw_output = await llm.complete(
-            system=self._build_system_prompt(context),
-            user=self._build_user_message(context),
+        inference = await llm.complete(
+            messages=[
+                {"role": "system", "content": self._build_system_prompt(context)},
+                {"role": "user", "content": self._build_user_message(context)},
+            ],
+            task_type=self.task_type,
+            trace_id=context.trace_id,
+            max_tokens=self.max_tokens,
+            temperature=0.1,
             schema=self.output_schema,
         )
+        raw_output = json.loads(inference.content)
         validated = self.output_schema.model_validate(raw_output)
+        output = validated.model_dump(mode="json")
+        output["_inference"] = {
+            "model_id": inference.model_id,
+            "backend": inference.backend,
+            "primary_model_id": inference.primary_model_id,
+            "primary_backend": inference.primary_backend,
+            "fallback_reason": inference.fallback_reason,
+            "latency_ms": inference.latency_ms,
+            "fallback_used": inference.fallback_used,
+            "prompt_tokens": inference.prompt_tokens,
+            "completion_tokens": inference.completion_tokens,
+        }
         return AgentOutput(
             agent_name=self.agent_name,
-            output=validated.model_dump(mode="json"),
+            output=output,
             latency_ms=int((time.perf_counter() - started) * 1000),
         )
 

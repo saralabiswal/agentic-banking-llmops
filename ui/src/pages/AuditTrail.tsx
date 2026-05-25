@@ -2,7 +2,7 @@
  * Author: Sarala Biswal
  */
 import { useQuery } from "@tanstack/react-query";
-import { Copy, FileClock, RefreshCw } from "lucide-react";
+import { Check, ChevronDown, Copy, FileClock, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
@@ -154,7 +154,7 @@ export default function AuditTrail(): JSX.Element {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(480px,540px)]">
         <section className="rounded-md border border-slate-800 bg-slate-900 p-4">
           <h3 className="mb-4 text-sm font-semibold text-white">Timeline</h3>
           {records.length === 0 ? (
@@ -184,6 +184,7 @@ export default function AuditTrail(): JSX.Element {
           </div>
           <div className="space-y-3 text-sm" data-testid="regulatory-replay">
             <ReplayItem question="What data did the agent have?" answer={replay.data} color="blue" />
+            <ReplayItem question="What memory was retrieved or stored?" answer={replay.memory} color="cyan" />
             <ReplayItem question="What policy was retrieved?" answer={replay.policy} color="purple" />
             <ReplayItem question="What compliance checks ran?" answer={replay.checks} color="red" />
             <ReplayItem question="What customer outcome was captured?" answer={replay.outcomes} color="green" />
@@ -195,17 +196,30 @@ export default function AuditTrail(): JSX.Element {
 }
 
 function AuditTimelineRecord({ record }: { record: AuditRecord }): JSX.Element {
+  const layer = layerLabel(record.eventType);
+  const [payloadCopied, setPayloadCopied] = useState(false);
+  const formattedPayload = JSON.stringify(record, null, 2);
+
+  function copyPayload(): void {
+    void copyText(formattedPayload).then(() => {
+      setPayloadCopied(true);
+      window.setTimeout(() => setPayloadCopied(false), 1600);
+    });
+  }
+
   return (
     <details
       className={[
-        "rounded-md border border-l-2 border-slate-800 bg-slate-950 p-4",
+        "group rounded-md border border-l-2 border-slate-800 bg-slate-950 p-4 transition hover:border-slate-700 hover:bg-slate-900/80",
         eventTypeLeftBorder(record.eventType)
       ].join(" ")}
     >
       <summary className="cursor-pointer list-none">
-        <div className="grid gap-3 md:grid-cols-[180px_260px_minmax(0,1fr)] md:items-center">
-          <span className="font-mono text-xs text-slate-500">{formatTimestamp(record.timestamp)}</span>
-          <span className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="w-28 shrink-0 font-mono text-xs text-slate-500">
+            {formatTimestamp(record.timestamp)}
+          </span>
+          <span className="flex min-w-0 shrink-0 items-center gap-2">
             <span
               className={[
                 "inline-flex w-fit rounded-sm border px-2 py-1 text-xs font-semibold",
@@ -214,17 +228,37 @@ function AuditTimelineRecord({ record }: { record: AuditRecord }): JSX.Element {
             >
               {record.eventType}
             </span>
-            {layerLabel(record.eventType).length > 0 ? (
+            {layer.length > 0 ? (
               <span className="text-[10px] font-bold tabular-nums text-slate-500">
-                {layerLabel(record.eventType)}
+                {layer}
               </span>
             ) : null}
           </span>
-          <span className="truncate text-sm text-slate-300">{record.auditId}</span>
+          <span className="min-w-[16rem] flex-1 truncate text-sm text-slate-300">
+            {record.auditId}
+          </span>
+          <span className="ml-auto inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-slate-700 px-2.5 text-xs font-semibold text-slate-300 transition group-hover:border-slate-500 group-hover:text-white">
+            Payload
+            <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" />
+          </span>
         </div>
       </summary>
-      <div className="mt-3">
-        <CodeBlock code={JSON.stringify(record, null, 2)} language="json" />
+      <div className="mt-3 border-t border-slate-800 pt-3">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Beautified JSON Payload
+          </div>
+          <button
+            aria-label={`Copy JSON payload for ${record.auditId}`}
+            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-slate-700 px-2.5 text-xs font-semibold text-slate-300 hover:border-slate-500 hover:text-white"
+            onClick={copyPayload}
+            type="button"
+          >
+            {payloadCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            {payloadCopied ? "Copied" : "Copy JSON"}
+          </button>
+        </div>
+        <CodeBlock code={formattedPayload} language="json" />
       </div>
     </details>
   );
@@ -239,6 +273,23 @@ function Metric({ label, value }: { label: string; value: string }): JSX.Element
   );
 }
 
+async function copyText(value: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(value);
+    return;
+  } catch {
+    const textArea = document.createElement("textarea");
+    textArea.value = value;
+    textArea.setAttribute("readonly", "true");
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textArea);
+  }
+}
+
 function ReplayItem({
   question,
   answer,
@@ -246,10 +297,11 @@ function ReplayItem({
 }: {
   question: string;
   answer: string;
-  color?: "blue" | "purple" | "red" | "green" | "slate";
+  color?: "blue" | "cyan" | "purple" | "red" | "green" | "slate";
 }): JSX.Element {
   const borderMap = {
     blue: "border-l-blue-400",
+    cyan: "border-l-cyan-400",
     purple: "border-l-purple-400",
     red: "border-l-red-400",
     green: "border-l-green-400",
@@ -257,6 +309,7 @@ function ReplayItem({
   };
   const textMap = {
     blue: "text-blue-300",
+    cyan: "text-cyan-300",
     purple: "text-purple-300",
     red: "text-red-300",
     green: "text-green-300",
@@ -297,6 +350,8 @@ function eventTypeBadgeClass(eventType: string): string {
   switch (eventType) {
     case "CONTEXT_ASSEMBLY":
       return "border-blue-400/70 bg-blue-500/10 text-blue-200";
+    case "MEMORY_RETRIEVED":
+      return "border-cyan-400/70 bg-cyan-500/10 text-cyan-200";
     case "VECTOR_RETRIEVAL":
       return "border-purple-400/70 bg-purple-500/10 text-purple-200";
     case "ORCHESTRATION_COMPLETE":
@@ -307,6 +362,8 @@ function eventTypeBadgeClass(eventType: string): string {
       return "border-amber-400/70 bg-amber-500/10 text-amber-200";
     case "ACTION_EXECUTED":
       return "border-cyan-400/70 bg-cyan-500/10 text-cyan-200";
+    case "MEMORY_STORED":
+      return "border-teal-400/70 bg-teal-500/10 text-teal-200";
     case "OUTCOME_CAPTURED":
       return "border-green-400/70 bg-green-500/10 text-green-200";
     default:
@@ -318,6 +375,8 @@ function eventTypeLeftBorder(eventType: string): string {
   switch (eventType) {
     case "CONTEXT_ASSEMBLY":
       return "border-l-blue-400";
+    case "MEMORY_RETRIEVED":
+      return "border-l-cyan-400";
     case "VECTOR_RETRIEVAL":
       return "border-l-purple-400";
     case "ORCHESTRATION_COMPLETE":
@@ -328,6 +387,8 @@ function eventTypeLeftBorder(eventType: string): string {
       return "border-l-amber-400";
     case "ACTION_EXECUTED":
       return "border-l-cyan-400";
+    case "MEMORY_STORED":
+      return "border-l-teal-400";
     case "OUTCOME_CAPTURED":
       return "border-l-green-400";
     default:
@@ -338,6 +399,7 @@ function eventTypeLeftBorder(eventType: string): string {
 function layerLabel(eventType: string): string {
   switch (eventType) {
     case "CONTEXT_ASSEMBLY":
+    case "MEMORY_RETRIEVED":
       return "L1";
     case "VECTOR_RETRIEVAL":
       return "L2";
@@ -348,6 +410,7 @@ function layerLabel(eventType: string): string {
     case "AB_ASSIGNMENT":
       return "L5";
     case "ACTION_EXECUTED":
+    case "MEMORY_STORED":
     case "OUTCOME_CAPTURED":
       return "L6";
     default:
@@ -386,17 +449,20 @@ function scenarioLabel(value: string | undefined): string | undefined {
 
 function buildReplay(records: AuditRecord[]): {
   data: string;
+  memory: string;
   policy: string;
   checks: string;
   outcomes: string;
 } {
   // Regulatory replay distills raw audit JSON into the four questions reviewers ask first.
   const context = records.find((record) => record.eventType === "CONTEXT_ASSEMBLY");
+  const memoryRetrieved = records.find((record) => record.eventType === "MEMORY_RETRIEVED");
+  const memoryStored = records.filter((record) => record.eventType === "MEMORY_STORED");
   const retrieval = records.find((record) => record.eventType === "VECTOR_RETRIEVAL");
   const guardrails = records.find((record) => record.eventType === "GUARDRAILS_EVALUATION");
   const outcomes = records.filter((record) => record.eventType === "OUTCOME_CAPTURED");
-  const degradedSources = arrayValue(context?.payload.sourcesDegraded);
-  const failedSources = arrayValue(context?.payload.sourcesFailed);
+  const degradedSources = arrayValue(context?.payload.sources_degraded ?? context?.payload.sourcesDegraded);
+  const failedSources = arrayValue(context?.payload.sources_failed ?? context?.payload.sourcesFailed);
   const degraded = (degradedSources.length > 0 ? degradedSources : failedSources).join(", ") || "none";
   const retrievedChunks = arrayValue(retrieval?.payload.chunks);
   const auditedChunks = arrayValue(retrieval?.payload.chunksRetrieved);
@@ -412,12 +478,37 @@ function buildReplay(records: AuditRecord[]): {
   const evaluated = arrayValue(guardrails?.payload.actionsEvaluated);
   const flagged = arrayValue(guardrails?.payload.flaggedActions).length;
   const checkCount = checks.length > 0 ? checks.length : evaluated.length;
+  const memoryCount = numberValue(memoryRetrieved?.payload.memory_count ?? memoryRetrieved?.payload.memoryCount);
+  const memoryReason = stringValue(memoryRetrieved?.payload.reason);
+  const storedSignals = memoryStored
+    .map((record) =>
+      stringValue(record.payload.outcome_signal ?? record.payload.outcomeSignal)
+      ?? stringValue(record.payload.memory_type ?? record.payload.memoryType)
+    )
+    .filter((value): value is string => value !== null);
 
   return {
     data:
       context === undefined
         ? "No context record loaded yet."
-        : `Customer ${context.customerId}; partial_context=${String(context.payload.partialContext)}; sources_degraded=${degraded}.`,
+        : `Customer ${context.customerId}; partial_context=${String(context.payload.partial_context ?? context.payload.partialContext)}; sources_degraded=${degraded}.`,
+    memory:
+      memoryRetrieved === undefined && memoryStored.length === 0
+        ? "No memory records loaded yet."
+        : [
+            memoryRetrieved === undefined
+              ? null
+              : `${memoryCount ?? 0} long-term memories retrieved${
+                  memoryRetrieved.payload.degraded === true
+                    ? `; retrieval degraded${memoryReason === null ? "" : `: ${memoryReason}`}`
+                    : ""
+                }.`,
+            storedSignals.length === 0
+              ? null
+              : `${memoryStored.length} memory write(s): ${storedSignals.join(", ")}.`
+          ]
+            .filter((value): value is string => value !== null)
+            .join(" "),
     policy: chunks.length === 0 ? "No retrieval record loaded yet." : chunks.join(", "),
     checks:
       guardrails === undefined
@@ -447,6 +538,10 @@ function arrayValue(value: unknown): unknown[] {
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" ? value : null;
+}
+
+function numberValue(value: unknown): number | null {
+  return typeof value === "number" ? value : null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

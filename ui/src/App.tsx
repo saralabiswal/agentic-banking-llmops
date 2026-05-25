@@ -7,6 +7,7 @@ import About from "./pages/About";
 import ArchitectureView from "./pages/ArchitectureView";
 import AuditTrail from "./pages/AuditTrail";
 import DriftMonitor from "./pages/DriftMonitor";
+import Evaluation from "./pages/Evaluation";
 import Experiments from "./pages/Experiments";
 import GuardrailsView from "./pages/GuardrailsView";
 import ModelRegistry from "./pages/ModelRegistry";
@@ -24,6 +25,7 @@ export default function App(): JSX.Element {
         <Route path="/about" element={<About />} />
         <Route path="/architecture" element={<ArchitectureView />} />
         <Route path="/audit/:traceId" element={<AuditTrail />} />
+        <Route path="/evaluation" element={<Evaluation />} />
         <Route path="/experiments" element={<Experiments />} />
         <Route path="/drift" element={<DriftMonitor />} />
         <Route path="/guardrails" element={<GuardrailsView />} />
